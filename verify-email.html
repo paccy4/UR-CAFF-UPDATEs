@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Verify your email</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="brand">
+        <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+        <div class="brand-name">UR-CAFF UPDATE</div>
+      </div>
+
+      <h1 class="auth-title">Check your email</h1>
+      <p class="auth-sub">We sent a verification link to <strong id="user-email">your email</strong>. Click the link, then come back and press the button below.</p>
+      <p class="auth-sub" style="margin-top:-20px; color:#A87A2E;">Don't see it? Check your <strong>Spam</strong> folder — first-time emails from this app sometimes land there. Marking it "Not spam" fixes this for future emails too.</p>
+
+      <div class="error-box" id="verify-error"></div>
+      <div class="error-box" id="verify-info" style="background:#DDEDE5; border-color:#B7D9C9; color:#17463C;"></div>
+
+      <button class="btn" id="check-btn">I've verified — continue</button>
+      <button class="btn btn-ghost" id="resend-btn" style="margin-top:10px;">Resend verification email</button>
+
+      <div class="toggle-row">
+        Wrong account? <button type="button" id="logout-link">Log out</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="showcase">
+    <img src="campus.png" alt="UR-CAFF Musanze campus" class="showcase-photo">
+    <div class="showcase-content">
+      <p class="showcase-lead">One last step before you're in:</p>
+      <div class="feature-list">
+        <div class="feature-item">Confirming your email keeps accounts real — no fake sign-ups filling up room status or announcements.</div>
+        <div class="feature-item">This only takes a minute, and you only ever do it once.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signOut, sendEmailVerification, reload
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  function showError(msg) {
+    const box = document.getElementById("verify-error");
+    box.textContent = msg;
+    box.classList.add("show");
+  }
+  function showInfo(msg) {
+    const box = document.getElementById("verify-info");
+    box.textContent = msg;
+    box.classList.add("show");
+  }
+  function clearBoxes() {
+    document.getElementById("verify-error").classList.remove("show");
+    document.getElementById("verify-info").classList.remove("show");
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (user.emailVerified) { window.location.href = "home.html"; return; }
+    document.getElementById("user-email").textContent = user.email;
+  });
+
+  document.getElementById("check-btn").addEventListener("click", async () => {
+    clearBoxes();
+    const btn = document.getElementById("check-btn");
+    btn.disabled = true; btn.textContent = "Checking…";
+    try {
+      await reload(auth.currentUser);
+      if (auth.currentUser.emailVerified) {
+        window.location.href = "home.html";
+      } else {
+        showError("Not verified yet — check your inbox (and spam folder), click the link, then try again.");
+      }
+    } catch (err) {
+      showError("Something went wrong: " + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "I've verified — continue";
+    }
+  });
+
+  document.getElementById("resend-btn").addEventListener("click", async () => {
+    clearBoxes();
+    const btn = document.getElementById("resend-btn");
+    btn.disabled = true; btn.textContent = "Sending…";
+    try {
+      await sendEmailVerification(auth.currentUser);
+      showInfo("Verification email sent again — check your inbox.");
+    } catch (err) {
+      showError("Couldn't resend: " + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "Resend verification email";
+    }
+  });
+
+  document.getElementById("logout-link").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+</script>
+
+</body>
+</html>

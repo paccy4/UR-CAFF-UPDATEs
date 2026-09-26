@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Groups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html" class="active">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header">
+    <div class="ledger-rule">For your year &amp; department</div>
+    <h1>Groups</h1>
+    <p id="dash-sub">Used for group assignments. Every member needs to be added here first.</p>
+  </div>
+
+  <div id="auto-composer" class="composer" style="display:none; border-color:var(--accent);">
+    <div class="ledger-rule" style="margin-bottom:10px;">Fast way  for large classes</div>
+    <p style="font-size:13.5px; color:#5B6259; margin:0 0 14px;">Create a batch of empty groups, students pick which one to join themselves. Each student can only be in one group per subject at a time.</p>
+    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="field" style="margin-bottom:0; flex:1; min-width:160px;">
+        <label>Subject / course</label>
+        <input type="text" id="auto-subject" required placeholder="e.g. Soil Sciences">
+      </div>
+      <div class="field" id="auto-year-field" style="display:none; margin-bottom:0; width:130px;">
+        <label>Year</label>
+        <select id="auto-year">
+          <option value="Year 1">Year 1</option>
+          <option value="Year 2">Year 2</option>
+          <option value="Year 3">Year 3</option>
+          <option value="Year 4">Year 4</option>
+        </select>
+      </div>
+      <div class="field" id="auto-dept-field" style="display:none; margin-bottom:0; width:130px;">
+        <label>Department</label>
+        <select id="auto-department">
+          <option value="FST">FST</option>
+          <option value="CROP">CROP</option>
+          <option value="HORT">HORT</option>
+          <option value="AEA">AEA</option>
+          <option value="AGRO">AGRO</option>
+          <option value="FLM">FLM</option>
+          <option value="EGM">EGM</option>
+          <option value="AMC">AMC</option>
+          <option value="ALI">ALI</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0; width:150px;">
+        <label>How many groups</label>
+        <input type="number" id="auto-count" min="1" max="100" value="10">
+      </div>
+      <div class="field" style="margin-bottom:0; width:150px;">
+        <label>Max per group (optional)</label>
+        <input type="number" id="auto-cap" min="1" placeholder="No limit">
+      </div>
+      <button type="button" class="btn" id="auto-generate-btn" style="width:auto; padding:11px 20px;">Create groups</button>
+    </div>
+    <p id="auto-status" style="font-size:13px; color:#17463C; margin:12px 0 0;"></p>
+  </div>
+
+  <div id="composer" class="composer" style="display:none;">
+    <div class="ledger-rule" style="margin-bottom:10px;">Or create one at a time</div>
+    <form id="create-form">
+      <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="field" style="margin-bottom:0; flex:1; min-width:160px;">
+          <label>Subject / course</label>
+          <input type="text" id="group-subject" required placeholder="e.g. Soil Sciences">
+        </div>
+        <div class="field" id="group-year-field" style="display:none; margin-bottom:0; width:130px;">
+          <label>Year</label>
+          <select id="group-year">
+            <option value="All years">All years</option>
+            <option value="Year 1">Year 1</option>
+            <option value="Year 2">Year 2</option>
+            <option value="Year 3">Year 3</option>
+            <option value="Year 4">Year 4</option>
+          </select>
+        </div>
+        <div class="field" id="group-dept-field" style="display:none; margin-bottom:0; width:130px;">
+          <label>Department</label>
+          <select id="group-department">
+            <option value="All departements">All departements</option>
+            <option value="FST">FST</option>
+            <option value="CROP">CROP</option>
+            <option value="HORT">HORT</option>
+            <option value="AEA">AEA</option>
+            <option value="AGRO">AGRO</option>
+            <option value="FLM">FLM</option>
+            <option value="EGM">EGM</option>
+            <option value="AMC">AMC</option>
+            <option value="ALI">ALI</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0; flex:1; min-width:160px;">
+          <label>Group name</label>
+          <input type="text" id="group-name" required placeholder="e.g. Group 3">
+        </div>
+        <div class="field" style="margin-bottom:0; width:150px;">
+          <label>Max members (optional)</label>
+          <input type="number" id="group-cap" min="1" placeholder="No limit">
+        </div>
+        <button type="submit" class="btn btn-ghost" id="create-btn" style="width:auto; padding:11px 20px;">Create group</button>
+      </div>
+    </form>
+    <p style="font-size:12px; color:#5B6259; margin:10px 0 0;">Students join themselves from the list below, you don't need to add members here.</p>
+  </div>
+
+  <div id="staff-filter-row" style="display:none; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
+    <select id="subject-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All subjects</option>
+    </select>
+    <select id="year-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All years</option>
+      <option value="Year 1">Year 1</option>
+      <option value="Year 2">Year 2</option>
+      <option value="Year 3">Year 3</option>
+      <option value="Year 4">Year 4</option>
+    </select>
+    <select id="department-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All departments</option>
+    </select>
+  </div>
+
+  <div class="loading-row" id="loading-row">
+    <div class="spinner"></div> Loading groups…
+  </div>
+
+  <div class="course-grid" id="group-grid" style="display:none;"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>No groups yet</h3>
+    <p id="empty-copy">Once a CP/CPN creates a group, it will show up here.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection, addDoc, deleteDoc, getDocs, updateDoc,
+    arrayUnion, arrayRemove,
+    onSnapshot, orderBy, query, where, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const grid = document.getElementById("group-grid");
+  const emptyState = document.getElementById("empty-state");
+  const loadingRow = document.getElementById("loading-row");
+  const composer = document.getElementById("composer");
+  const autoComposer = document.getElementById("auto-composer");
+
+  let myProfile = null;
+  let myUid = null;
+  let canManage = false;
+  let isStaff = false;
+  let currentGroups = []; // latest groups in scope, kept live
+  let myGroupsBySubject = {}; // subject -> groupId this student is in, for that subject
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+    myUid = user.uid;
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    myProfile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (myProfile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    canManage = myProfile.role === "cp_cpn" || myProfile.role === "staff";
+    isStaff = myProfile.role === "staff";
+    if (!isStaff) document.getElementById("admin-nav-link").style.display = "none";
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === myProfile.year;
+          const deptOk = !n.department || n.department === "all" || n.department === myProfile.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((myProfile.role === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+
+    if (canManage) {
+      composer.style.display = "block";
+      autoComposer.style.display = "block";
+      document.getElementById("dash-sub").textContent = isStaff
+        ? "Pick a Year and Department for each group you create, so students can actually see it."
+        : `New groups are created for ${myProfile.year} · ${myProfile.department}. Students join themselves.`;
+      if (isStaff) {
+        document.getElementById("auto-year-field").style.display = "block";
+        document.getElementById("auto-dept-field").style.display = "block";
+        document.getElementById("group-year-field").style.display = "block";
+        document.getElementById("group-dept-field").style.display = "block";
+      }
+    } else {
+      document.getElementById("dash-sub").textContent = "Join one group below — you can only be in one at a time.";
+    }
+    if (isStaff) {
+      document.getElementById("staff-filter-row").style.display = "flex";
+    }
+
+    listenForGroups();
+  });
+
+  let allVisibleGroups = [];
+
+  function listenForGroups() {
+    const q = query(collection(db, "groups"), orderBy("name"));
+    onSnapshot(q, (snap) => {
+      loadingRow.style.display = "none";
+      const visible = [];
+      const ownScope = []; // groups in *my* own year/department, used for auto-generate
+      snap.forEach((d) => {
+        const g = d.data();
+        if (isStaff || (g.year === myProfile.year && g.department === myProfile.department)) {
+          visible.push({ id: d.id, ...g });
+        }
+        if (myProfile && g.year === myProfile.year && g.department === myProfile.department) {
+          ownScope.push({ id: d.id, ...g });
+        }
+      });
+      currentGroups = ownScope;
+      allVisibleGroups = visible;
+
+      // A student can be in one group per SUBJECT (e.g. one Chemistry group
+      // and one Biology group at the same time), not just one group overall.
+      myGroupsBySubject = {};
+      if (!canManage) {
+        visible.forEach(g => {
+          if ((g.members || []).some(m => m.uid === myUid)) {
+            myGroupsBySubject[g.subject || ""] = g.id;
+          }
+        });
+      }
+
+      if (isStaff) populateGroupFilters(visible);
+      applyGroupFilters();
+    });
+  }
+
+  function populateGroupFilters(visible) {
+    const subjSel = document.getElementById("subject-filter");
+    const deptSel = document.getElementById("department-filter");
+    const currentSubj = subjSel.value;
+    const currentDept = deptSel.value;
+
+    const subjects = [...new Set(visible.map(g => g.subject).filter(Boolean))].sort();
+    subjSel.innerHTML = `<option value="">All subjects</option>` +
+      subjects.map(s => `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join("");
+    subjSel.value = currentSubj;
+
+    const depts = [...new Set(visible.map(g => g.department).filter(Boolean))].sort();
+    deptSel.innerHTML = `<option value="">All departments</option>` +
+      depts.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join("");
+    deptSel.value = currentDept;
+  }
+
+  function applyGroupFilters() {
+    const subjectFilter = isStaff ? document.getElementById("subject-filter").value : "";
+    const yearFilter = isStaff ? document.getElementById("year-filter").value : "";
+    const deptFilter = isStaff ? document.getElementById("department-filter").value : "";
+
+    const filtered = allVisibleGroups.filter(g =>
+      (!subjectFilter || g.subject === subjectFilter) &&
+      (!yearFilter || g.year === yearFilter) &&
+      (!deptFilter || g.department === deptFilter)
+    );
+
+    if (filtered.length === 0) {
+      emptyState.style.display = "block";
+      grid.style.display = "none";
+      return;
+    }
+    emptyState.style.display = "none";
+    grid.style.display = "grid";
+    grid.innerHTML = "";
+    filtered.forEach((g) => grid.appendChild(renderGroupCard(g)));
+  }
+
+  document.getElementById("subject-filter").addEventListener("change", applyGroupFilters);
+  document.getElementById("year-filter").addEventListener("change", applyGroupFilters);
+  document.getElementById("department-filter").addEventListener("change", applyGroupFilters);
+
+  function renderGroupCard(g) {
+    const card = document.createElement("div");
+    card.className = "course-card";
+    const isMine = (g.members || []).some(m => m.uid === myUid);
+    const members = (g.members || []).map(m =>
+      `<div style="font-size:13px; padding:3px 0; ${m.uid === myUid ? 'font-weight:700; color:var(--primary);' : ''}">${escapeHtml(m.name)}${m.uid === myUid ? ' (you)' : ''}</div>`
+    ).join("");
+    const count = (g.members || []).length;
+    const capText = g.maxMembers ? `${count}/${g.maxMembers}` : `${count}`;
+    const isFull = g.maxMembers && count >= g.maxMembers;
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div class="course-code">${escapeHtml(g.year)} · ${escapeHtml(g.department)}</div>
+        ${isMine ? '<span class="tag-pill">Your group</span>' : ''}
+      </div>
+      <h3 class="course-name">${escapeHtml(g.name)}</h3>
+      ${g.subject ? `<div style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.04em; margin-top:6px;">${escapeHtml(g.subject)}</div>` : ''}
+      <div style="font-size:12px; color:#8A8F86; font-family:var(--font-mono); margin-bottom:4px;">${capText} member${count === 1 ? "" : "s"}</div>
+      <div>${members || '<span style="font-size:13px; color:#5B6259;">No members yet</span>'}</div>
+    `;
+
+    if (canManage) {
+      const del = document.createElement("button");
+      del.className = "delete-link";
+      del.textContent = "Delete group";
+      del.onclick = async () => {
+        if (confirm(`Delete "${g.name}"?`)) await deleteDoc(doc(db, "groups", g.id));
+      };
+      card.appendChild(del);
+    }
+
+    if (!canManage) {
+      const joinBox = document.createElement("div");
+      joinBox.style.marginTop = "10px";
+      const myGroupForThisSubject = myGroupsBySubject[g.subject || ""];
+      if (isMine) {
+        const leaveBtn = document.createElement("button");
+        leaveBtn.className = "btn btn-ghost";
+        leaveBtn.style.cssText = "width:auto; padding:8px 14px; font-size:13px;";
+        leaveBtn.textContent = "Leave group";
+        leaveBtn.onclick = () => leaveGroup(g);
+        joinBox.appendChild(leaveBtn);
+      } else if (myGroupForThisSubject) {
+        joinBox.innerHTML = `<span style="font-size:12.5px; color:#5B6259;">You're already in a group for this subject</span>`;
+      } else if (isFull) {
+        joinBox.innerHTML = `<span style="font-size:12.5px; color:#A83C2E;">Full</span>`;
+      } else {
+        const joinBtn = document.createElement("button");
+        joinBtn.className = "btn";
+        joinBtn.style.cssText = "width:auto; padding:8px 14px; font-size:13px;";
+        joinBtn.textContent = "Join group";
+        joinBtn.onclick = () => joinGroup(g);
+        joinBox.appendChild(joinBtn);
+      }
+      card.appendChild(joinBox);
+    }
+
+    if (isMine || isStaff) {
+      card.appendChild(buildChatSection(g));
+    }
+
+    return card;
+  }
+
+  async function joinGroup(g) {
+    await updateDoc(doc(db, "groups", g.id), {
+      members: arrayUnion({ uid: myUid, name: myProfile.name || auth.currentUser.email })
+    });
+  }
+
+  async function leaveGroup(g) {
+    const mine = (g.members || []).find(m => m.uid === myUid);
+    if (!mine) return;
+    await updateDoc(doc(db, "groups", g.id), {
+      members: arrayRemove(mine)
+    });
+  }
+
+  function buildChatSection(g) {
+    const wrap = document.createElement("div");
+    const toggle = document.createElement("button");
+    toggle.className = "chat-toggle";
+    toggle.textContent = "Group chat";
+    const panel = document.createElement("div");
+    panel.className = "chat-panel";
+    panel.style.display = "none";
+    panel.innerHTML = `
+      <div class="chat-messages" id="chat-msgs-${g.id}"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input-${g.id}" placeholder="Message ${escapeAttr(g.name)}…" autocomplete="off">
+        <button class="chat-send-btn" id="chat-send-${g.id}">Send</button>
+      </div>
+    `;
+
+    let listening = false;
+    toggle.onclick = () => {
+      const open = panel.style.display === "block";
+      panel.style.display = open ? "none" : "block";
+      toggle.textContent = open ? "Group chat" : "Hide chat";
+      if (!open && !listening) {
+        listening = true;
+        listenForChat(g.id);
+      }
+    };
+
+    panel.querySelector(`#chat-send-${g.id}`).onclick = () => sendChatMessage(g.id);
+    panel.querySelector(`#chat-input-${g.id}`).addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendChatMessage(g.id);
+    });
+
+    wrap.appendChild(toggle);
+    wrap.appendChild(panel);
+    return wrap;
+  }
+
+  function listenForChat(groupId) {
+    const q = query(collection(db, "group_messages"), where("groupId", "==", groupId));
+    onSnapshot(q, (snap) => {
+      const container = document.getElementById(`chat-msgs-${groupId}`);
+      if (!container) return;
+      const msgs = [];
+      snap.forEach((d) => msgs.push(d.data()));
+      // Sorted client-side (rather than via orderBy in the query) so this
+      // never needs a Firestore composite index to work.
+      msgs.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+
+      container.innerHTML = "";
+      msgs.forEach((m) => {
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble" + (m.senderUid === myUid ? " mine" : "");
+        bubble.innerHTML = `
+          <div class="chat-bubble-meta">${m.senderUid === myUid ? "You" : escapeHtml(m.senderName || "")}</div>
+          ${escapeHtml(m.text || "")}
+        `;
+        container.appendChild(bubble);
+      });
+      container.scrollTop = container.scrollHeight;
+    }, (err) => {
+      const container = document.getElementById(`chat-msgs-${groupId}`);
+      if (container) container.innerHTML = `<div style="font-size:12.5px; color:#A83C2E;">Couldn't load chat: ${escapeHtml(err.message)}</div>`;
+    });
+  }
+
+  async function sendChatMessage(groupId) {
+    const input = document.getElementById(`chat-input-${groupId}`);
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    await addDoc(collection(db, "group_messages"), {
+      groupId,
+      senderUid: myUid,
+      senderName: myProfile.name || auth.currentUser.email,
+      text,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  document.getElementById("create-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("group-name").value.trim();
+    const subject = document.getElementById("group-subject").value.trim();
+    if (!name || !subject) return;
+    const cap = parseInt(document.getElementById("group-cap").value, 10);
+    const year = isStaff ? document.getElementById("group-year").value : myProfile.year;
+    const department = isStaff ? document.getElementById("group-department").value : myProfile.department;
+
+    await addDoc(collection(db, "groups"), {
+      name,
+      subject,
+      year,
+      department,
+      maxMembers: cap > 0 ? cap : null,
+      members: [],
+      createdBy: myUid,
+      createdAt: serverTimestamp()
+    });
+
+    document.getElementById("group-name").value = "";
+    document.getElementById("group-cap").value = "";
+    document.getElementById("group-subject").value = "";
+  });
+
+  document.getElementById("auto-generate-btn").addEventListener("click", async () => {
+    const status = document.getElementById("auto-status");
+    const btn = document.getElementById("auto-generate-btn");
+    const subject = document.getElementById("auto-subject").value.trim();
+    const howMany = parseInt(document.getElementById("auto-count").value, 10);
+    const cap = parseInt(document.getElementById("auto-cap").value, 10);
+    const year = isStaff ? document.getElementById("auto-year").value : myProfile.year;
+    const department = isStaff ? document.getElementById("auto-department").value : myProfile.department;
+
+    if (!subject) {
+      status.style.color = "#A83C2E";
+      status.textContent = "Enter a subject/course first.";
+      return;
+    }
+    if (!howMany || howMany < 1) {
+      status.style.color = "#A83C2E";
+      status.textContent = "Enter how many groups to create.";
+      return;
+    }
+
+    // Continue numbering after any existing "Group N" names for this exact
+    // subject + year + department, so re-running this doesn't collide.
+    let nextNum = 1;
+    allVisibleGroups
+      .filter(g => g.subject === subject && g.year === year && g.department === department)
+      .forEach(g => {
+        const match = /^Group (\d+)$/.exec(g.name || "");
+        if (match) nextNum = Math.max(nextNum, parseInt(match[1], 10) + 1);
+      });
+
+    btn.disabled = true;
+    status.style.color = "#17463C";
+    status.textContent = "Creating groups…";
+
+    for (let i = 0; i < howMany; i++) {
+      await addDoc(collection(db, "groups"), {
+        name: `Group ${nextNum++}`,
+        subject,
+        year,
+        department,
+        maxMembers: cap > 0 ? cap : null,
+        members: [],
+        createdBy: myUid,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    btn.disabled = false;
+    status.style.color = "#17463C";
+    status.textContent = `Created ${howMany} empty group(s)` + (cap > 0 ? `, capped at ${cap} each` : "") + `. Students can now join from the list below.`;
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+  function escapeAttr(str) { return escapeHtml(str || ""); }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+// Merge this into your existing firestore.rules, inside the
+// `service cloud.firestore { match /databases/{database}/documents { ... } }`
+// block. Replace whatever rules you currently have for
+// attendance_sessions and attendance_records with these.
+//
+// If you already have helper functions like isSignedIn()/getRole()
+// with different names, reuse yours instead of redefining — just
+// keep the allow logic below the same.
+
+function isSignedIn() {
+  return request.auth != null;
+}
+
+function getRole() {
+  return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+}
+
+function isCpOrStaff() {
+  return isSignedIn() && (getRole() == 'cp_cpn' || getRole() == 'staff');
+}
+
+match /attendance_sessions/{sessionId} {
+  allow read: if isSignedIn();
+  allow create, update, delete: if isCpOrStaff();
+}
+
+match /attendance_records/{recordId} {
+  // Students can read their own record (to see they were marked
+  // present); CP/CPN and staff can read all of them.
+  allow read: if isSignedIn() &&
+    (isCpOrStaff() || resource.data.studentUid == request.auth.uid);
+
+  // THE KEY FIX: only a signed-in CP/CPN or staff account can create
+  // a record, and only crediting themselves as the scanner. A student
+  // — even one logged in with a shared password — has no path to
+  // write their own attendance record anymore.
+  allow create: if isCpOrStaff() &&
+    request.resource.data.scannedByUid == request.auth.uid &&
+    request.resource.data.studentUid is string;
+
+  // Attendance records are a fact of what happened at scan time —
+  // nobody edits or deletes them after the fact.
+  allow update, delete: if false;
+}

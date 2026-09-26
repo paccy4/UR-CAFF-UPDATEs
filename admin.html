@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link" class="active">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header" id="header-block">
+    <div class="ledger-rule">Staff only</div>
+    <h1>Manage people</h1>
+    <p id="dash-sub">Grant CP/CPN or Staff access.</p>
+  </div>
+
+  <div id="denied" class="empty-state" style="display:none;">
+    <h3>This page isn't available to you</h3>
+    <p>Only Staff accounts can view this.</p>
+  </div>
+
+  <div id="search-row" style="display:none; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
+    <input type="text" id="search-box" placeholder="Search by name or email…"
+      style="flex:1; min-width:200px; max-width:360px; padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-family:var(--font-body); font-size:14px;">
+    <select id="year-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All years</option>
+      <option value="Year 1">Year 1</option>
+      <option value="Year 2">Year 2</option>
+      <option value="Year 3">Year 3</option>
+      <option value="Year 4">Year 4</option>
+    </select>
+    <select id="department-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All departments</option>
+    </select>
+  </div>
+
+  <div class="loading-row" id="loading-row" style="display:none;">
+    <div class="spinner"></div> Loading people…
+  </div>
+
+  <div id="people-table" style="display:none;"></div>
+
+  <div id="clubs-section" style="display:none; margin-top:40px;">
+    <div class="ledger-rule" style="margin-bottom:10px;">Room bookings for non-class groups</div>
+    <h2 style="margin:0 0 6px;">Clubs &amp; Families</h2>
+    <p style="font-size:13.5px; color:#5B6259; margin:0 0 16px;">Register a club, family, or any group that isn't a year/department class. Appoint one existing account to book and free rooms on its behalf, that person can be any student, not just a CP/CPN.</p>
+
+    <div class="composer" style="margin-bottom:20px;">
+      <div class="field" style="margin-bottom:12px;">
+        <label>Club or family name</label>
+        <input type="text" id="club-name" placeholder="e.g. Debate Club, Alumni Family">
+      </div>
+      <div class="field" style="margin-bottom:12px; position:relative;">
+        <label>Appointed person</label>
+        <input type="text" id="club-rep-search" placeholder="Search by name or email…" autocomplete="off">
+        <div id="club-rep-results" style="display:none; position:absolute; z-index:10; background:#fff; border:1.5px solid var(--field); border-radius:10px; margin-top:4px; max-height:220px; overflow-y:auto; width:100%;"></div>
+      </div>
+      <p id="club-rep-chosen" style="font-size:13px; color:#17463C; margin:0 0 12px; display:none;"></p>
+      <button type="button" class="btn" id="add-club-btn" style="width:auto; padding:11px 20px;">Register club</button>
+      <span id="club-status" style="font-size:13px; color:#17463C; margin-left:10px;"></span>
+    </div>
+
+    <div id="clubs-list"></div>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, orderBy, query, getDocs, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let allPeople = [];
+  let myUid = null;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+    myUid = user.uid;
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    const myRole = profileSnap.exists() ? profileSnap.data().role : "student";
+    const myProfileData = profileSnap.exists() ? profileSnap.data() : {};
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === myProfileData.year;
+          const deptOk = !n.department || n.department === "all" || n.department === myProfileData.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((myRole === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+
+    if (myRole !== "staff") {
+      document.getElementById("header-block").style.display = "none";
+      document.getElementById("denied").style.display = "block";
+      return;
+    }
+
+    document.getElementById("search-row").style.display = "flex";
+    document.getElementById("clubs-section").style.display = "block";
+    listenForClubs();
+    document.getElementById("loading-row").style.display = "flex";
+    listenForPeople();
+  });
+
+  function listenForPeople() {
+    const q = query(collection(db, "users"), orderBy("name"));
+    onSnapshot(q, (snap) => {
+      document.getElementById("loading-row").style.display = "none";
+      allPeople = [];
+      snap.forEach((d) => allPeople.push({ uid: d.id, ...d.data() }));
+      populateDepartmentFilter();
+      applyFilters();
+    });
+  }
+
+  function populateDepartmentFilter() {
+    const select = document.getElementById("department-filter");
+    const current = select.value;
+    const depts = [...new Set(allPeople.map(p => p.department).filter(Boolean))].sort();
+    select.innerHTML = `<option value="">All departments</option>` +
+      depts.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join("");
+    select.value = current; // keep whatever was selected, if it still exists
+  }
+
+  function applyFilters() {
+    const term = document.getElementById("search-box").value.trim().toLowerCase();
+    const yearFilter = document.getElementById("year-filter").value;
+    const deptFilter = document.getElementById("department-filter").value;
+
+    // Searching by name/email always works on its own. Otherwise, at least a
+    // year needs to be picked before anyone is shown — this stops the list
+    // defaulting to everyone mixed together. Department can stay on "All
+    // departments" and still show results across the whole year.
+    if (!term && !yearFilter) {
+      renderPrompt();
+      return;
+    }
+
+    const filtered = allPeople.filter(p => {
+      const matchesTerm = !term || (p.name || "").toLowerCase().includes(term) || (p.email || "").toLowerCase().includes(term);
+      const matchesYear = !yearFilter || p.year === yearFilter;
+      const matchesDept = !deptFilter || p.department === deptFilter;
+      return matchesTerm && matchesYear && matchesDept;
+    });
+    renderTable(filtered);
+  }
+
+  function renderPrompt() {
+    const container = document.getElementById("people-table");
+    container.style.display = "block";
+    container.innerHTML = `<p style="color:#5B6259; font-size:14px;">Pick a Year above to see that class (leave Department on "All departments" to see everyone in that year) or search by name/email directly.</p>`;
+  }
+
+  function renderTable(people) {
+    const container = document.getElementById("people-table");
+    container.style.display = "block";
+
+    if (people.length === 0) {
+      container.innerHTML = `<p style="color:#5B6259; font-size:14px;">No matches.</p>`;
+      return;
+    }
+
+    const studentCount = people.filter(p => p.role === "student").length;
+
+    container.innerHTML = `
+      <p style="font-size:13px; color:#5B6259; margin:0 0 12px;">
+        <strong style="color:var(--primary);">${people.length}</strong> ${people.length === 1 ? "person" : "people"} shown
+        (<strong style="color:var(--primary);">${studentCount}</strong> student${studentCount === 1 ? "" : "s"})
+      </p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${people.map(p => `
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--paper-raised); border:1px solid var(--line); border-radius:10px; padding:14px 16px;">
+            <div style="flex:1; min-width:180px;">
+              <div style="font-weight:600; font-size:14px;">${escapeHtml(p.name || p.email)}</div>
+              <div style="font-size:12.5px; color:#5B6259;">${escapeHtml(p.email || "")} · ${escapeHtml(p.year || "")} · ${escapeHtml(p.department || "")}</div>
+            </div>
+            <select data-uid="${p.uid}" class="role-select" style="padding:8px 10px; border:1.5px solid var(--field); border-radius:8px; font-size:13px;" ${p.uid === myUid ? "disabled" : ""}>
+              <option value="student" ${p.role === "student" ? "selected" : ""}>Student</option>
+              <option value="cp_cpn" ${p.role === "cp_cpn" ? "selected" : ""}>CP / CPN</option>
+              <option value="staff" ${p.role === "staff" ? "selected" : ""}>Staff</option>
+              <option value="graduated" ${p.role === "graduated" ? "selected" : ""}>Graduated</option>
+            </select>
+            <select data-uid="${p.uid}" class="department-select" style="padding:8px 10px; border:1.5px solid var(--field); border-radius:8px; font-size:13px;">
+              ${(!["FST","CROP","HORT","AEA","AGRO","FLM","EGM","AMC","ALI"].includes(p.department) && p.department)
+                ? `<option value="${escapeAttr(p.department)}" selected>${escapeHtml(p.department)} (not official)</option>`
+                : ""}
+              ${["FST","CROP","HORT","AEA","AGRO","FLM","EGM","AMC","ALI"].map(d =>
+                `<option value="${d}" ${p.department === d ? "selected" : ""}>${d}</option>`).join("")}
+            </select>
+            <span class="save-status" data-uid="${p.uid}" style="font-size:12px; color:#17463C; min-width:60px;"></span>
+            ${p.uid === myUid ? "" : `<button class="remove-btn" data-uid="${p.uid}" data-name="${escapeAttr(p.name || p.email)}" style="background:none; border:1.5px solid #E9B7AC; color:#A83C2E; border-radius:8px; padding:7px 12px; font-size:12.5px; cursor:pointer;">Remove</button>`}
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    container.querySelectorAll(".remove-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const uid = btn.dataset.uid;
+        const name = btn.dataset.name;
+        const sure = confirm(
+          `Remove ${name}'s profile from the platform?\n\n` +
+          `This deletes their year/department/role data, so they immediately lose access ` +
+          `to Rooms, Announcements, Assignments, and Groups.`
+        );
+        if (!sure) return;
+        try {
+          await deleteDoc(doc(db, "users", uid));
+        } catch (err) {
+          alert("Couldn't remove: " + err.message);
+        }
+      });
+    });
+
+    container.querySelectorAll(".role-select").forEach((sel) => {
+      sel.addEventListener("change", async () => {
+        const uid = sel.dataset.uid;
+        const newRole = sel.value;
+        const statusEl = container.querySelector(`.save-status[data-uid="${uid}"]`);
+        statusEl.textContent = "Saving…";
+        try {
+          await updateDoc(doc(db, "users", uid), { role: newRole });
+          statusEl.textContent = "✓ Saved";
+          setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        } catch (err) {
+          statusEl.textContent = "Failed";
+          statusEl.style.color = "#A83C2E";
+        }
+      });
+    });
+
+    container.querySelectorAll(".department-select").forEach((sel) => {
+      sel.addEventListener("change", async () => {
+        const uid = sel.dataset.uid;
+        const newDept = sel.value;
+        const statusEl = container.querySelector(`.save-status[data-uid="${uid}"]`);
+        statusEl.textContent = "Saving…";
+        try {
+          await updateDoc(doc(db, "users", uid), { department: newDept });
+          statusEl.textContent = "✓ Saved";
+          setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        } catch (err) {
+          statusEl.textContent = "Failed";
+          statusEl.style.color = "#A83C2E";
+        }
+      });
+    });
+  }
+
+  document.getElementById("search-box").addEventListener("input", applyFilters);
+  document.getElementById("year-filter").addEventListener("change", applyFilters);
+  document.getElementById("department-filter").addEventListener("change", applyFilters);
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+  function escapeAttr(str) { return escapeHtml(str || ""); }
+
+  // ---- Clubs & Families ----
+  let chosenRep = null; // { uid, name, email }
+
+  const repSearchInput = document.getElementById("club-rep-search");
+  const repResults = document.getElementById("club-rep-results");
+  const repChosen = document.getElementById("club-rep-chosen");
+
+  repSearchInput?.addEventListener("input", () => {
+    const term = repSearchInput.value.trim().toLowerCase();
+    chosenRep = null;
+    repChosen.style.display = "none";
+    if (!term) { repResults.style.display = "none"; return; }
+    const matches = allPeople.filter(p =>
+      (p.name || "").toLowerCase().includes(term) || (p.email || "").toLowerCase().includes(term)
+    ).slice(0, 10);
+    if (matches.length === 0) {
+      repResults.innerHTML = `<div style="padding:10px 13px; font-size:13px; color:#5B6259;">No match.</div>`;
+      repResults.style.display = "block";
+      return;
+    }
+    repResults.innerHTML = matches.map(p => `
+      <div class="rep-pick" data-uid="${escapeAttr(p.uid)}" data-name="${escapeAttr(p.name || p.email)}"
+        style="padding:9px 13px; font-size:13.5px; cursor:pointer; border-bottom:1px solid var(--line);">
+        ${escapeHtml(p.name || p.email)} <span style="color:#8A8F86; font-size:12px;">(${escapeHtml(p.role)})</span>
+      </div>
+    `).join("");
+    repResults.style.display = "block";
+    repResults.querySelectorAll(".rep-pick").forEach(row => {
+      row.onclick = () => {
+        chosenRep = { uid: row.dataset.uid, name: row.dataset.name };
+        repChosen.textContent = `Appointing: ${chosenRep.name}`;
+        repChosen.style.display = "block";
+        repResults.style.display = "none";
+        repSearchInput.value = chosenRep.name;
+      };
+    });
+  });
+
+  document.getElementById("add-club-btn")?.addEventListener("click", async () => {
+    const status = document.getElementById("club-status");
+    const name = document.getElementById("club-name").value.trim();
+    if (!name) { status.style.color = "#A83C2E"; status.textContent = "Enter a club/family name."; return; }
+    if (!chosenRep) { status.style.color = "#A83C2E"; status.textContent = "Search for and select an appointed person."; return; }
+
+    status.style.color = "#17463C";
+    status.textContent = "Saving…";
+    try {
+      await addDoc(collection(db, "clubs"), {
+        name,
+        appointedUid: chosenRep.uid,
+        appointedName: chosenRep.name,
+        createdBy: myUid,
+        createdAt: serverTimestamp()
+      });
+      document.getElementById("club-name").value = "";
+      repSearchInput.value = "";
+      chosenRep = null;
+      repChosen.style.display = "none";
+      status.textContent = "✓ Registered";
+      setTimeout(() => { status.textContent = ""; }, 2000);
+    } catch (err) {
+      status.style.color = "#A83C2E";
+      status.textContent = "Failed: " + err.message;
+    }
+  });
+
+  function listenForClubs() {
+    const q = query(collection(db, "clubs"), orderBy("name"));
+    onSnapshot(q, (snap) => {
+      const list = document.getElementById("clubs-list");
+      if (snap.empty) {
+        list.innerHTML = `<p style="font-size:13px; color:#5B6259;">No clubs or families registered yet.</p>`;
+        return;
+      }
+      const rows = [];
+      snap.forEach((d) => {
+        const c = d.data();
+        rows.push(`
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--paper-raised); border:1px solid var(--line); border-radius:10px; padding:12px 16px; margin-bottom:8px;">
+            <div style="flex:1; min-width:180px;">
+              <div style="font-weight:600; font-size:14px;">${escapeHtml(c.name || "")}</div>
+              <div style="font-size:12.5px; color:#5B6259;">Appointed: ${escapeHtml(c.appointedName || "")}</div>
+            </div>
+            <button class="club-remove" data-id="${d.id}" data-name="${escapeAttr(c.name)}"
+              style="background:none; border:1.5px solid #E9B7AC; color:#A83C2E; border-radius:8px; padding:7px 12px; font-size:12.5px; cursor:pointer;">Remove</button>
+          </div>
+        `);
+      });
+      list.innerHTML = rows.join("");
+      list.querySelectorAll(".club-remove").forEach(btn => {
+        btn.onclick = async () => {
+          if (confirm(`Remove "${btn.dataset.name}"? Any room currently booked under this club will need to be freed manually by staff afterward.`)) {
+            await deleteDoc(doc(db, "clubs", btn.dataset.id));
+          }
+        };
+      });
+    });
+  }
+
+</script>
+
+</body>
+</html>

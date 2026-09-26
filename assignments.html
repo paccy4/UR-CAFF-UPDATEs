@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Assignments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html" class="active">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header">
+    <div class="ledger-rule" id="scope-label">For your year &amp; department</div>
+    <h1>Assignments</h1>
+    <p id="dash-sub">Posted by your CP/CPN. Submit with a link to your file (e.g. Google Drive).</p>
+  </div>
+
+  <div id="composer" class="composer" style="display:none;">
+    <form id="post-form">
+      <div class="field" style="margin-bottom:12px;">
+        <label>Title</label>
+        <input type="text" id="post-title" required placeholder="e.g. Lab report — serial dilution">
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Instructions</label>
+        <textarea id="post-desc" required placeholder="What students need to do…"></textarea>
+      </div>
+      <div class="composer-row">
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label>Due date</label>
+          <input type="date" id="post-due">
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label>Submission type</label>
+          <select id="post-type">
+            <option value="individual">Individual</option>
+            <option value="group">Group</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label>How is it submitted?</label>
+          <select id="post-mode">
+            <option value="online">Online (a link)</option>
+            <option value="offline">In person / on paper</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0; display:none;" id="staff-target-row">
+          <label>Year</label>
+          <select id="post-year">
+            <option value="all">All years</option>
+            <option value="Year 1">Year 1</option>
+            <option value="Year 2">Year 2</option>
+            <option value="Year 3">Year 3</option>
+            <option value="Year 4">Year 4</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0; display:none;" id="staff-dept-row">
+          <label>Department</label>
+          <select id="post-department">
+            <option value="all">All departments</option>
+            <option value="FST">FST</option>
+            <option value="CROP">CROP</option>
+            <option value="HORT">HORT</option>
+            <option value="AEA">AEA</option>
+            <option value="AGRO">AGRO</option>
+            <option value="FLM">FLM</option>
+            <option value="EGM">EGM</option>
+            <option value="AMC">AMC</option>
+            <option value="ALI">ALI</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:12px; color:#5B6259; margin:-4px 0 12px;">Group assignments use whatever groups exist for your year/department — set those up on the <a href="groups.html" style="color:var(--primary); font-weight:600;">Groups</a> page first.</p>
+      <button type="submit" class="btn" id="post-btn" style="width:auto; padding:11px 20px;">Post assignment</button>
+    </form>
+  </div>
+
+  <div id="staff-filter-row" style="display:none; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
+    <select id="year-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All years</option>
+      <option value="Year 1">Year 1</option>
+      <option value="Year 2">Year 2</option>
+      <option value="Year 3">Year 3</option>
+      <option value="Year 4">Year 4</option>
+    </select>
+    <select id="department-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All departments</option>
+    </select>
+  </div>
+
+  <div class="loading-row" id="loading-row">
+    <div class="spinner"></div> Loading assignments…
+  </div>
+
+  <div class="announcement-list" id="assignment-list" style="display:none;"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>No assignments yet</h3>
+    <p>Assignments from your CP/CPN will show up here.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection, addDoc, setDoc, getDocs, updateDoc, deleteDoc,
+    onSnapshot, orderBy, query, where, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const list = document.getElementById("assignment-list");
+  const emptyState = document.getElementById("empty-state");
+  const loadingRow = document.getElementById("loading-row");
+  const composer = document.getElementById("composer");
+
+  let myProfile = null;
+  let myUid = null;
+  let canPost = false;
+  let isStaff = false;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+    myUid = user.uid;
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    myProfile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (myProfile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    canPost = myProfile.role === "cp_cpn" || myProfile.role === "staff";
+    isStaff = myProfile.role === "staff";
+    if (!isStaff) document.getElementById("admin-nav-link").style.display = "none";
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === myProfile.year;
+          const deptOk = !n.department || n.department === "all" || n.department === myProfile.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((myProfile.role === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+
+    if (canPost) {
+      composer.style.display = "block";
+      if (isStaff) {
+        document.getElementById("staff-target-row").style.display = "block";
+        document.getElementById("staff-dept-row").style.display = "block";
+        document.getElementById("staff-filter-row").style.display = "flex";
+        document.getElementById("scope-label").textContent = "All years & departments";
+      } else {
+        document.getElementById("dash-sub").textContent =
+          `Posting for ${myProfile.year} · ${myProfile.department}. You'll be able to see and download submissions.`;
+      }
+    } else {
+      document.getElementById("scope-label").textContent = `${myProfile.year} · ${myProfile.department}`;
+    }
+
+    listenForAssignments();
+  });
+
+  let latestVisible = [];
+
+  function listenForAssignments() {
+    const q = query(collection(db, "assignments"), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snap) => {
+      loadingRow.style.display = "none";
+      const visible = [];
+      snap.forEach((docSnap) => {
+        const a = docSnap.data();
+        if (isStaff || matchesMe(a)) visible.push({ id: docSnap.id, ...a });
+      });
+      latestVisible = visible;
+      if (canPost) checkDueTomorrowReminders(visible);
+
+      if (isStaff) {
+        const depts = [...new Set(visible.map(a => a.department).filter(d => d && d !== "all"))].sort();
+        const deptSel = document.getElementById("department-filter");
+        const current = deptSel.value;
+        deptSel.innerHTML = `<option value="">All departments</option>` +
+          depts.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join("");
+        deptSel.value = current;
+      }
+
+      renderFilteredAssignments();
+    }, (err) => {
+      loadingRow.style.display = "none";
+      emptyState.style.display = "block";
+      document.querySelector("#empty-state p").textContent = "Couldn't load assignments: " + err.message;
+    });
+  }
+
+  function renderFilteredAssignments() {
+    const yearFilter = document.getElementById("year-filter").value;
+    const deptFilter = document.getElementById("department-filter").value;
+    const filtered = isStaff
+      ? latestVisible.filter(a => (!yearFilter || a.year === yearFilter) && (!deptFilter || a.department === deptFilter))
+      : latestVisible;
+
+    if (filtered.length === 0) {
+      emptyState.style.display = "block";
+      list.style.display = "none";
+      return;
+    }
+    emptyState.style.display = "none";
+    list.style.display = "flex";
+    list.innerHTML = "";
+    filtered.forEach((a) => list.appendChild(renderCard(a)));
+  }
+
+  function getTomorrowStr() {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  async function checkDueTomorrowReminders(list) {
+    const tomorrow = getTomorrowStr();
+    const dueTomorrow = list.filter(a => a.dueDate === tomorrow && a.submissionMode !== "offline");
+    for (const a of dueTomorrow) {
+      const reminderId = `reminder_${a.id}`;
+      try {
+        const existing = await getDoc(doc(db, "notifications", reminderId));
+        if (!existing.exists()) {
+          await setDoc(doc(db, "notifications", reminderId), {
+            type: "reminder",
+            title: `Due tomorrow: ${a.title}`,
+            body: `Submit by ${a.dueDate}`,
+            link: "assignments.html",
+            year: a.year, department: a.department,
+            createdAt: serverTimestamp()
+          });
+        }
+      } catch (e) { /* non-critical — another CP/CPN or staff session likely created it already */ }
+    }
+  }
+
+  document.getElementById("year-filter").addEventListener("change", renderFilteredAssignments);
+  document.getElementById("department-filter").addEventListener("change", renderFilteredAssignments);
+
+  function matchesMe(a) {
+    const yearOk = a.year === "all" || a.year === myProfile.year;
+    const deptOk = !a.department || a.department === "all" || a.department === myProfile.department;
+    return yearOk && deptOk;
+  }
+
+  function renderCard(a) {
+    const card = document.createElement("div");
+    card.className = "announcement-card";
+    const due = a.dueDate ? `Due ${a.dueDate}` : "No due date set";
+    const isManager = isStaff || (myProfile.role === "cp_cpn" && matchesMe(a));
+    const isStudentHere = myProfile.role === "student";
+    const isOffline = a.submissionMode === "offline";
+
+    card.innerHTML = `
+      <div class="announcement-head">
+        <h3 class="announcement-title">${escapeHtml(a.title || "")}</h3>
+        <span class="announcement-meta">${escapeHtml(a.authorName || "")} · ${escapeHtml(due)}</span>
+      </div>
+      <div class="announcement-body">${escapeHtml(a.description || "")}</div>
+      <div class="announcement-tags">
+        <span class="tag-pill">${escapeHtml(a.year === "all" ? "All years" : (a.year || ""))}</span>
+        <span class="tag-pill">${escapeHtml((!a.department || a.department === "all") ? "All departments" : a.department)}</span>
+        ${isOffline ? '<span class="tag-pill">In person / on paper</span>' : ''}
+      </div>
+      <div class="assignment-body" style="margin-top:14px;"></div>
+    `;
+
+    const bodyEl = card.querySelector(".assignment-body");
+    const canEditDelete = isStaff || a.authorUid === myUid;
+    if (canEditDelete) {
+      bodyEl.appendChild(buildEditDeleteControls(a));
+    }
+
+    if (isOffline) {
+      // No online submission to collect — nothing to submit, track, or download here.
+      const offlineNote = document.createElement("div");
+      offlineNote.style.cssText = "font-size:13px; color:#5B6259; margin-top:10px;";
+      offlineNote.textContent = "This is submitted in person or on paper — there's nothing to do here online.";
+      bodyEl.appendChild(offlineNote);
+      return card;
+    }
+
+    if (isStudentHere) {
+      bodyEl.appendChild(buildSubmitBox(a));
+    }
+    bodyEl.appendChild(buildCompletionBox(a));
+    if (isManager) {
+      bodyEl.appendChild(buildSubmissionsBox(a.id));
+    }
+    return card;
+  }
+
+  function buildEditDeleteControls(a) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed var(--line);";
+    wrap.innerHTML = `
+      <div style="display:flex; gap:10px;">
+        <button class="btn-ghost btn" id="edit-toggle-${a.id}" style="width:auto; padding:7px 14px; font-size:12.5px;">Edit</button>
+        <button id="delete-${a.id}" style="background:none; border:1.5px solid #E9B7AC; color:#A83C2E; border-radius:8px; padding:7px 14px; font-size:12.5px; cursor:pointer;">Delete</button>
+      </div>
+      <div id="edit-panel-${a.id}" style="display:none; margin-top:12px;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>Title</label>
+          <input type="text" id="edit-title-${a.id}" value="${escapeAttr(a.title || "")}">
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Instructions</label>
+          <textarea id="edit-desc-${a.id}">${escapeHtml(a.description || "")}</textarea>
+        </div>
+        <div class="field" style="margin-bottom:10px; max-width:200px;">
+          <label>Due date</label>
+          <input type="date" id="edit-due-${a.id}" value="${escapeAttr(a.dueDate || "")}">
+        </div>
+        <button class="btn" id="save-edit-${a.id}" style="width:auto; padding:9px 16px; font-size:13px;">Save changes</button>
+        <span id="edit-status-${a.id}" style="font-size:12px; color:#17463C; margin-left:8px;"></span>
+      </div>
+    `;
+
+    wrap.querySelector(`#edit-toggle-${a.id}`).onclick = () => {
+      const panel = wrap.querySelector(`#edit-panel-${a.id}`);
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+    };
+
+    wrap.querySelector(`#save-edit-${a.id}`).onclick = async () => {
+      const status = wrap.querySelector(`#edit-status-${a.id}`);
+      const title = wrap.querySelector(`#edit-title-${a.id}`).value.trim();
+      const description = wrap.querySelector(`#edit-desc-${a.id}`).value.trim();
+      const dueDate = wrap.querySelector(`#edit-due-${a.id}`).value;
+      if (!title || !description) {
+        status.style.color = "#A83C2E";
+        status.textContent = "Title and instructions can't be empty.";
+        return;
+      }
+      status.style.color = "#17463C";
+      status.textContent = "Saving…";
+      try {
+        await updateDoc(doc(db, "assignments", a.id), { title, description, dueDate });
+        status.textContent = "✓ Saved";
+        setTimeout(() => { status.textContent = ""; }, 2000);
+      } catch (err) {
+        status.style.color = "#A83C2E";
+        status.textContent = "Failed: " + err.message;
+      }
+    };
+
+    wrap.querySelector(`#delete-${a.id}`).onclick = async () => {
+      if (!confirm(`Delete "${a.title}"? This can't be undone.`)) return;
+      try {
+        await deleteDoc(doc(db, "assignments", a.id));
+      } catch (err) {
+        alert("Couldn't delete: " + err.message);
+      }
+    };
+
+    return wrap;
+  }
+
+  function buildSubmitBox(a) {
+    const box = document.createElement("div");
+    box.innerHTML = `<div class="loading-row" style="padding:8px 0;"><div class="spinner"></div> Checking submission…</div>`;
+
+    if (a.type === "group") {
+      findMyGroup(a).then((group) => {
+        if (!group) {
+          box.innerHTML = `<div style="font-size:13px; color:#5B6259;">You're not in a group for this yet — ask your CP/CPN to add you on the <a href="groups.html" style="color:var(--primary); font-weight:600;">Groups</a> page.</div>`;
+          return;
+        }
+        const subId = `${a.id}_group_${group.id}`;
+        getDoc(doc(db, "submissions", subId)).then((snap) => {
+          if (snap.exists()) {
+            const s = snap.data();
+            const count = s.resubmitCount || 0;
+            if (count >= 2) {
+              box.innerHTML = `
+                <div style="font-size:13px; color:#17463C; margin-bottom:6px;">
+                  ✓ ${escapeHtml(group.name)} submitted (by ${escapeHtml(s.submittedByName)}) — <a href="${escapeAttr(s.link)}" target="_blank" rel="noopener">view file</a>
+                </div>
+                <div style="font-size:12px; color:#A83C2E;">Resubmission limit reached (2/2). Contact your CP/CPN if this needs to change.</div>
+              `;
+              return;
+            }
+            box.innerHTML = `
+              <div style="font-size:13px; color:#17463C; margin-bottom:8px;">
+                ✓ ${escapeHtml(group.name)} submitted (by ${escapeHtml(s.submittedByName)}) — <a href="${escapeAttr(s.link)}" target="_blank" rel="noopener">view file</a>
+              </div>
+              <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:13px;" id="resubmit-${a.id}">Update submission (${count}/2 used)</button>
+            `;
+            box.querySelector(`#resubmit-${a.id}`).onclick = () => renderGroupSubmitForm(box, a, group, s.link, count);
+          } else {
+            renderGroupSubmitForm(box, a, group, "", 0);
+          }
+        });
+      });
+      return box;
+    }
+
+    // Individual assignment
+    const subRef = doc(db, "submissions", `${a.id}_${myUid}`);
+    getDoc(subRef).then((snap) => {
+      if (snap.exists()) {
+        const s = snap.data();
+        const count = s.resubmitCount || 0;
+        if (count >= 2) {
+          box.innerHTML = `
+            <div style="font-size:13px; color:#17463C; margin-bottom:6px;">
+              ✓ Submitted — <a href="${escapeAttr(s.link)}" target="_blank" rel="noopener">view your file</a>
+            </div>
+            <div style="font-size:12px; color:#A83C2E;">Resubmission limit reached (2/2). Contact your CP/CPN if this needs to change.</div>
+          `;
+          return;
+        }
+        box.innerHTML = `
+          <div style="font-size:13px; color:#17463C; margin-bottom:8px;">
+            ✓ Submitted — <a href="${escapeAttr(s.link)}" target="_blank" rel="noopener">view your file</a>
+          </div>
+          <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:13px;" id="resubmit-${a.id}">Update submission (${count}/2 used)</button>
+        `;
+        box.querySelector(`#resubmit-${a.id}`).onclick = () => renderSubmitForm(box, a.id, s.link, count);
+      } else {
+        renderSubmitForm(box, a.id, "", 0);
+      }
+    });
+    return box;
+  }
+
+  // Finds the group (matching this assignment's year/department) that the
+  // current student belongs to, so group submissions can be shared.
+  async function findMyGroup(a) {
+    const snap = await getDocs(collection(db, "groups"));
+    let found = null;
+    snap.forEach((d) => {
+      const g = d.data();
+      const yearOk = a.year === "all" || g.year === a.year;
+      const deptOk = !a.department || a.department === "all" || g.department === a.department;
+      if (yearOk && deptOk && (g.members || []).some(m => m.uid === myUid)) {
+        found = { id: d.id, ...g };
+      }
+    });
+    return found;
+  }
+
+  function renderGroupSubmitForm(box, a, group, existingLink, currentCount) {
+    const isUpdate = currentCount > 0 || !!existingLink;
+    box.innerHTML = `
+      <div style="font-size:12px; color:#5B6259; margin-bottom:8px;">Submitting for <strong>${escapeHtml(group.name)}</strong> — this counts for every member.${isUpdate ? " This will use one of the group's 2 allowed resubmissions." : ""}</div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>Link to your group's file (Google Drive, etc.)</label>
+        <input type="url" id="glink-${a.id}" required placeholder="https://drive.google.com/..." value="${escapeAttr(existingLink)}">
+      </div>
+      <button class="btn" style="width:auto; padding:8px 16px; font-size:13px;" id="gsubmit-${a.id}">${isUpdate ? "Save update" : "Submit for group"}</button>
+    `;
+    box.querySelector(`#gsubmit-${a.id}`).onclick = async () => {
+      const link = box.querySelector(`#glink-${a.id}`).value.trim();
+      if (!link) return;
+      if (!link.startsWith("https://")) {
+        alert("Please paste a link starting with https:// (e.g. a Google Drive share link).");
+        return;
+      }
+      const newCount = existingLink ? currentCount + 1 : 0;
+      await setDoc(doc(db, "submissions", `${a.id}_group_${group.id}`), {
+        assignmentId: a.id,
+        groupId: group.id,
+        groupName: group.name,
+        year: a.year === "all" ? group.year : a.year,
+        department: (!a.department || a.department === "all") ? group.department : a.department,
+        submittedByUid: myUid,
+        submittedByName: myProfile.name || auth.currentUser.email,
+        link,
+        resubmitCount: newCount,
+        submittedAt: serverTimestamp()
+      });
+      box.innerHTML = `<div style="font-size:13px; color:#17463C;">✓ ${escapeHtml(group.name)} submitted — <a href="${escapeAttr(link)}" target="_blank" rel="noopener">view file</a></div>`;
+    };
+  }
+
+  function renderSubmitForm(box, assignmentId, existingLink, currentCount) {
+    const isUpdate = currentCount > 0 || !!existingLink;
+    box.innerHTML = `
+      ${isUpdate ? `<div style="font-size:12px; color:#5B6259; margin-bottom:6px;">This will use one of your 2 allowed resubmissions.</div>` : ""}
+      <div class="field" style="margin-bottom:8px;">
+        <label>Link to your file (Google Drive, etc.)</label>
+        <input type="url" id="link-${assignmentId}" required placeholder="https://drive.google.com/..." value="${escapeAttr(existingLink)}">
+      </div>
+      <button class="btn" style="width:auto; padding:8px 16px; font-size:13px;" id="submit-${assignmentId}">${isUpdate ? "Save update" : "Submit"}</button>
+    `;
+    box.querySelector(`#submit-${assignmentId}`).onclick = async () => {
+      const link = box.querySelector(`#link-${assignmentId}`).value.trim();
+      if (!link) return;
+      if (!link.startsWith("https://")) {
+        alert("Please paste a link starting with https:// (e.g. a Google Drive share link).");
+        return;
+      }
+      const newCount = existingLink ? currentCount + 1 : 0;
+      await setDoc(doc(db, "submissions", `${assignmentId}_${myUid}`), {
+        assignmentId,
+        studentUid: myUid,
+        studentName: myProfile.name || auth.currentUser.email,
+        year: myProfile.year,
+        department: myProfile.department,
+        link,
+        resubmitCount: newCount,
+        submittedAt: serverTimestamp()
+      });
+      box.innerHTML = `<div style="font-size:13px; color:#17463C;">✓ Submitted — <a href="${escapeAttr(link)}" target="_blank" rel="noopener">view your file</a></div>`;
+    };
+  }
+
+  function buildCompletionBox(a) {
+    const box = document.createElement("div");
+    box.style.cssText = "margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);";
+    box.innerHTML = `<div style="font-size:12px; font-weight:600; color:var(--primary); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">
+      ${a.type === "group" ? "Group progress" : "Who's finished"}
+    </div><div class="completion-inner" style="font-size:13px; color:#5B6259;">Loading…</div>`;
+    const inner = box.querySelector(".completion-inner");
+
+    const subQ = query(collection(db, "submissions"), where("assignmentId", "==", a.id));
+    onSnapshot(subQ, (subSnap) => {
+      const submittedUids = new Set();
+      const submittedNames = [];
+      const submittedGroupIds = new Map(); // groupId -> { submittedByName, link }
+      subSnap.forEach((d) => {
+        const s = d.data();
+        if (s.groupId) {
+          submittedGroupIds.set(s.groupId, { submittedByName: s.submittedByName, link: s.link });
+        } else {
+          submittedUids.add(s.studentUid);
+          submittedNames.push(s.studentName);
+        }
+      });
+
+      if (a.type === "group") {
+        renderGroupProgress(inner, a, submittedGroupIds);
+      } else {
+        inner.innerHTML = submittedNames.length
+          ? submittedNames.map(n => `<span class="tag-pill" style="margin:2px 4px 2px 0; display:inline-block;">✓ ${escapeHtml(n)}</span>`).join("")
+          : `<span>No one has submitted yet.</span>`;
+      }
+    });
+
+    return box;
+  }
+
+  async function renderGroupProgress(inner, a, submittedGroupIds) {
+    const snap = await getDocs(collection(db, "groups"));
+    const groups = [];
+    snap.forEach((d) => {
+      const g = d.data();
+      const yearOk = a.year === "all" || g.year === a.year;
+      const deptOk = !a.department || a.department === "all" || g.department === a.department;
+      if (yearOk && deptOk) groups.push({ id: d.id, ...g });
+    });
+
+    if (groups.length === 0) {
+      inner.innerHTML = `<span>No groups set up yet for this year/department — add them on the <a href="groups.html" style="color:var(--primary); font-weight:600;">Groups</a> page.</span>`;
+      return;
+    }
+
+    inner.innerHTML = groups.map((g) => {
+      const submission = submittedGroupIds.get(g.id);
+      const complete = !!submission;
+      const members = g.members || [];
+      const memberLines = members.map(m =>
+        `<div style="font-size:12.5px; padding:2px 0;">${complete ? '✓' : '○'} ${escapeHtml(m.name)}</div>`
+      ).join("");
+      return `
+        <div style="margin-bottom:12px; padding:10px 12px; border-radius:8px; background:${complete ? '#DDEDE5' : 'var(--paper)'};">
+          <div style="display:flex; justify-content:space-between; font-weight:600; font-size:13px; margin-bottom:4px;">
+            <span>${escapeHtml(g.name)}</span>
+            <span style="color:${complete ? '#17463C' : '#5B6259'};">${complete ? `Complete — by ${escapeHtml(submission.submittedByName)}` : 'Pending'}</span>
+          </div>
+          ${memberLines}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function buildSubmissionsBox(assignmentId) {
+    const box = document.createElement("div");
+    box.style.marginTop = "10px";
+    const toggle = document.createElement("button");
+    toggle.className = "btn-ghost btn";
+    toggle.style.cssText = "width:auto; padding:8px 14px; font-size:13px;";
+    toggle.textContent = "View submissions";
+    const results = document.createElement("div");
+    results.style.marginTop = "10px";
+    results.style.display = "none";
+
+    toggle.onclick = async () => {
+      const isOpen = results.style.display === "block";
+      results.style.display = isOpen ? "none" : "block";
+      toggle.textContent = isOpen ? "View submissions" : "Hide submissions";
+      if (!isOpen && !results.dataset.loaded) {
+        results.dataset.loaded = "1";
+        const q = query(collection(db, "submissions"), where("assignmentId", "==", assignmentId));
+        let subRows = [];
+        onSnapshot(q, (snap) => {
+          if (snap.empty) {
+            results.innerHTML = `<p style="font-size:13px; color:#5B6259;">No submissions yet.</p>`;
+            return;
+          }
+          subRows = [];
+          snap.forEach((d) => subRows.push(d.data()));
+          subRows.sort((a, b) => {
+            const an = a.groupId ? a.groupName : a.studentName;
+            const bn = b.groupId ? b.groupName : b.studentName;
+            return (an || "").localeCompare(bn || "");
+          });
+          renderSubRows();
+        });
+
+        const searchBox = document.createElement("input");
+        searchBox.type = "text";
+        searchBox.placeholder = "Find a name in this list…";
+        searchBox.style.cssText = "width:100%; max-width:280px; padding:8px 12px; border:1.5px solid var(--field); border-radius:10px; font-size:13px; display:none; margin-bottom:8px;";
+        const rowsHost = document.createElement("div");
+        results.appendChild(searchBox);
+        results.appendChild(rowsHost);
+        searchBox.oninput = renderSubRows;
+
+        function renderSubRows() {
+          searchBox.style.display = subRows.length > 8 ? "block" : "none";
+          const term = searchBox.value.trim().toLowerCase();
+          const filtered = term
+            ? subRows.filter(s => ((s.groupId ? s.groupName : s.studentName) || "").toLowerCase().includes(term))
+            : subRows;
+          const rows = filtered.map((s) => {
+            const label = s.groupId ? `${s.groupName} (submitted by ${s.submittedByName})` : (s.studentName || "");
+            const when = s.submittedAt && s.submittedAt.toDate
+              ? s.submittedAt.toDate().toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+              : "";
+            return `<div class="roll-row" style="color:var(--ink); border-color:var(--line);">
+              <span>${escapeHtml(label)}</span>
+              <span style="display:flex; gap:10px; align-items:center;">
+                ${when ? `<span style="font-size:11px; color:#8A8F86;">${escapeHtml(when)}</span>` : ""}
+                <a href="${escapeAttr(s.link)}" target="_blank" rel="noopener">Open file</a>
+              </span>
+            </div>`;
+          });
+          rowsHost.innerHTML = `<div class="roll" style="font-family:var(--font-body); max-height:320px; overflow-y:auto;">${rows.join("")}</div>` ||
+            (term ? `<p style="font-size:13px; color:#5B6259;">No match for "${escapeHtml(term)}".</p>` : "");
+        }
+      }
+    };
+
+    box.appendChild(toggle);
+    box.appendChild(results);
+    return box;
+  }
+
+  document.getElementById("post-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("post-title").value.trim();
+    const description = document.getElementById("post-desc").value.trim();
+    const dueDate = document.getElementById("post-due").value;
+    if (!title || !description) return;
+
+    const year = isStaff ? document.getElementById("post-year").value : myProfile.year;
+    const department = isStaff ? document.getElementById("post-department").value : (myProfile.department || "all");
+    const subType = document.getElementById("post-type").value;
+    const submissionMode = document.getElementById("post-mode").value;
+
+    await addDoc(collection(db, "assignments"), {
+      title, description, dueDate, year, department,
+      type: subType,
+      submissionMode,
+      authorUid: myUid,
+      authorName: myProfile.name || auth.currentUser.email,
+      createdAt: serverTimestamp()
+    });
+    await addDoc(collection(db, "notifications"), {
+      type: "assignment",
+      title: `New assignment: ${title}`,
+      body: dueDate ? `Due ${dueDate}` : "No due date set",
+      link: "assignments.html",
+      year, department,
+      createdAt: serverTimestamp()
+    });
+
+    document.getElementById("post-title").value = "";
+    document.getElementById("post-desc").value = "";
+    document.getElementById("post-due").value = "";
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+  function escapeAttr(str) { return escapeHtml(str || ""); }
+</script>
+
+</body>
+</html>

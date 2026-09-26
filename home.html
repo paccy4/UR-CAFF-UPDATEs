@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html" class="active">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main" style="max-width:1020px;">
+
+  <div class="home-hero">
+    <img src="campus.png" alt="UR-CAFF Musanze campus">
+    <div class="home-hero-overlay">
+      <div class="home-hero-eyebrow">UR-CAFF · Musanze Campus</div>
+      <h1 id="hero-greeting">Welcome</h1>
+      <p id="hero-subtitle">One place for room status, announcements, assignments, group work , and attendance.</p>
+    </div>
+  </div>
+
+  <div id="install-banner" class="composer" style="display:none; margin:20px 0; align-items:center; gap:14px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:200px;">
+      <strong style="font-size:14px;">Install UR-CAFF UPDATE on your phone</strong>
+      <p style="font-size:12.5px; color:#5B6259; margin:4px 0 0;">Opens full-screen like a real app — no browser bar, no typing the address again.</p>
+    </div>
+    <button class="btn" id="install-btn" style="width:auto; padding:9px 18px; font-size:13px; display:none;">Install</button>
+    <button class="btn btn-ghost" id="ios-install-btn" style="width:auto; padding:9px 18px; font-size:13px; display:none;">Show me how</button>
+    <button id="install-dismiss" style="background:none; border:none; color:#8A8F86; font-size:13px; cursor:pointer; padding:9px 6px;">Not now</button>
+  </div>
+
+  <div id="ios-install-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; border-radius:14px; padding:24px; max-width:320px; width:100%;">
+      <h3 style="margin:0 0 12px;">Install on iPhone/iPad</h3>
+      <ol style="padding-left:20px; font-size:14px; line-height:1.8; margin:0 0 16px;">
+        <li>Tap the Share icon at the bottom of Safari (a square with an arrow pointing up)</li>
+        <li>Scroll down the menu and tap "Add to Home Screen"</li>
+        <li>Tap "Add" in the top right corner</li>
+      </ol>
+      <button class="btn" id="ios-modal-close" style="width:100%; padding:11px;">Got it</button>
+    </div>
+  </div>
+
+  <div class="dash-header">
+    <div class="ledger-rule">What you can do here</div>
+  </div>
+
+  <div class="feature-grid">
+    <a href="dashboard.html" class="feature-card">
+      <div class="feature-icon">Rooms</div>
+      <h3>Room status</h3>
+      <p>See which rooms are free or occupied right now, before you walk over. Updated live by your CP/CPN.</p>
+    </a>
+    <a href="announcements.html" class="feature-card">
+      <div class="feature-icon">Announcements</div>
+      <h3>Announcements</h3>
+      <p>Messages from your CP/CPN and staff, you only see the ones posted for your year and department.</p>
+    </a>
+    <a href="assignments.html" class="feature-card">
+      <div class="feature-icon">Assignments</div>
+      <h3>Assignments</h3>
+      <p>Submit your work with a link to your file. See who's finished, or your group's live progress.</p>
+    </a>
+    <a href="groups.html" class="feature-card">
+      <div class="feature-icon">Groups</div>
+      <h3>Groups</h3>
+      <p>See which group you're in and who else is on it. Used for shared group assignments.</p>
+    </a>
+    <a href="attendance.html" class="feature-card">
+      <div class="feature-icon">Attendance</div>
+      <h3>Attendance</h3>
+      <p>Show your check-in code to your CP/CPN or staff to be marked present  or start a session and scan students in.</p>
+    </a>
+  </div>
+
+  <div class="how-it-works">
+    <h2>How it works</h2>
+    <ol id="how-it-works-list">
+      <li>Everyone signs in with their own account  students, CP/CPN, and staff.</li>
+      <li>What you see is scoped to your year and department, so it stays relevant.</li>
+      <li>CP/CPN keep room status and announcements up to date for their group.</li>
+      <li>Staff can manage roles for the whole platform from the Admin page.</li>
+    </ol>
+  </div>
+
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const firstName = (user.displayName || "").split(" ")[0];
+    const hour = new Date().getHours();
+    const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    document.getElementById("hero-greeting").textContent =
+      firstName ? `${timeGreeting}, ${firstName}` : timeGreeting;
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    const profile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (profile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    const role = profile.role || "student";
+
+    const subtitle = document.getElementById("hero-subtitle");
+    if (role === "staff") {
+      subtitle.textContent = "Welcome back, you have full access across every year and department.";
+    } else if (role === "cp_cpn") {
+      subtitle.textContent = `Good to see you, here's everything you're keeping current for ${profile.year} · ${profile.department}.`;
+    } else {
+      subtitle.textContent = `Glad you're here, here's what's happening for ${profile.year} · ${profile.department} today.`;
+    }
+
+    if (role !== "staff") {
+      document.getElementById("admin-nav-link").style.display = "none";
+    }
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === profile.year;
+          const deptOk = !n.department || n.department === "all" || n.department === profile.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((role === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+  });
+
+  (function setupInstallPrompt() {
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    if (isStandalone) return; // already installed — nothing to offer
+    if (localStorage.getItem("install_banner_dismissed") === "1") return;
+
+    const banner = document.getElementById("install-banner");
+    const installBtn = document.getElementById("install-btn");
+    const iosBtn = document.getElementById("ios-install-btn");
+    const dismissBtn = document.getElementById("install-dismiss");
+    const iosModal = document.getElementById("ios-install-modal");
+    const iosModalClose = document.getElementById("ios-modal-close");
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    const isIOSSafari = isIOS && /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/i.test(navigator.userAgent);
+
+    let deferredPrompt = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      banner.style.display = "flex";
+      installBtn.style.display = "inline-block";
+    });
+
+    if (isIOSSafari) {
+      banner.style.display = "flex";
+      iosBtn.style.display = "inline-block";
+    }
+
+    installBtn.addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      banner.style.display = "none";
+    });
+
+    iosBtn.addEventListener("click", () => { iosModal.style.display = "flex"; });
+    iosModalClose.addEventListener("click", () => { iosModal.style.display = "none"; });
+
+    dismissBtn.addEventListener("click", () => {
+      banner.style.display = "none";
+      localStorage.setItem("install_banner_dismissed", "1");
+    });
+
+    window.addEventListener("appinstalled", () => { banner.style.display = "none"; });
+  })();
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — My Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="qrcode-lib.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main" style="max-width:520px;">
+  <div class="dash-header">
+    <div class="ledger-rule">Your account</div>
+    <h1>My Profile</h1>
+    <p>Update your own details. Your role can only be changed by staff, on the Admin page.</p>
+  </div>
+
+  <div class="composer" id="form-wrap" style="display:none;">
+    <form id="profile-form">
+      <div class="field">
+        <label>Campus email</label>
+        <input type="email" id="p-email" disabled style="background:var(--paper); color:#5B6259;">
+      </div>
+      <div class="field">
+        <label>Full name</label>
+        <input type="text" id="p-name" required>
+      </div>
+      <div class="field">
+        <label>Year</label>
+        <select id="p-year">
+          <option value="Year 1">Year 1</option>
+          <option value="Year 2">Year 2</option>
+          <option value="Year 3">Year 3</option>
+          <option value="Year 4">Year 4</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Department (staff-managed)</label>
+        <select id="p-department" disabled style="background:var(--paper); color:#5B6259;">
+          <option value="FST">FST</option>
+          <option value="CROP">CROP</option>
+          <option value="HORT">HORT</option>
+          <option value="AEA">AEA</option>
+          <option value="AGRO">AGRO</option>
+          <option value="FLM">FLM</option>
+          <option value="EGM">EGM</option>
+          <option value="AMC">AMC</option>
+          <option value="ALI">ALI</option>
+        </select>
+        <p style="font-size:12px; color:#5B6259; margin:6px 0 0;">Switching departments causes real confusion in groups and room status, so only staff can change this. Ask staff if yours needs fixing.</p>
+      </div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>Role (staff-managed)</label>
+        <input type="text" id="p-role" disabled style="background:var(--paper); color:#5B6259; text-transform:capitalize;">
+      </div>
+      <button type="submit" class="btn" id="save-btn" style="width:auto; padding:11px 20px;">Save changes</button>
+      <span id="save-status" style="font-size:13px; color:#17463C; margin-left:10px;"></span>
+    </form>
+  </div>
+
+  <div class="composer" id="qr-wrap" style="display:none; text-align:center; margin-top:20px;">
+    <div class="ledger-rule" style="margin-bottom:10px;">Your check-in code</div>
+    <p style="font-size:12.5px; color:#5B6259; margin:0 0 14px;">Show this to your CP/CPN or a staff member to be marked present. Don't share a screenshot of it.</p>
+    <div id="my-qr" style="display:flex; justify-content:center;"></div>
+    <p style="font-size:11px; color:#8A8F86; margin:10px 0 0;">Refreshes automatically every 10 seconds.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let myUid = null;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+    myUid = user.uid;
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    const profile = profileSnap.exists() ? profileSnap.data() : {};
+
+    if (profile.role !== "staff") {
+      document.getElementById("admin-nav-link").style.display = "none";
+    }
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === profile.year;
+          const deptOk = !n.department || n.department === "all" || n.department === profile.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((profile.role === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+
+    document.getElementById("p-email").value = profile.email || user.email;
+    document.getElementById("p-name").value = profile.name || "";
+    document.getElementById("p-year").value = profile.year || "Year 1";
+    document.getElementById("p-department").value = profile.department || "";
+    document.getElementById("p-role").value = profile.role || "student";
+
+    document.getElementById("form-wrap").style.display = "block";
+
+    document.getElementById("qr-wrap").style.display = "block";
+    function drawQr() {
+      const bucket = Math.floor(Date.now() / 20000); // changes every 20s — must match the 20000ms window attendance.html's scanner checks against
+      const text = `URCAFF-STUDENT:${user.uid}:${bucket}`;
+      const target = document.getElementById("my-qr");
+      try {
+        let qr = null;
+        for (let t = 1; t <= 20 && !qr; t++) {
+          try {
+            const candidate = qrcode(t, "M");
+            candidate.addData(text);
+            candidate.make();
+            qr = candidate;
+          } catch (e) { /* text too big for this size, try the next */ }
+        }
+        if (!qr) throw new Error("Couldn't fit the code, try again.");
+        target.innerHTML = qr.createSvgTag(7, 28);
+      } catch (err) {
+        target.innerHTML = `<p style="font-size:13px; color:#A83C2E;">Couldn't generate the QR code: ${err.message}</p>`;
+      }
+    }
+    drawQr();
+    setInterval(drawQr, 10000);
+  });
+
+  document.getElementById("profile-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const status = document.getElementById("save-status");
+    const btn = document.getElementById("save-btn");
+    btn.disabled = true;
+    status.textContent = "Saving…";
+
+    const name = document.getElementById("p-name").value.trim();
+    const year = document.getElementById("p-year").value;
+    const department = document.getElementById("p-department").value;
+
+    try {
+      // role is intentionally never sent here the security rules block
+      // self-changes to role, so omitting it keeps this write valid.
+      await updateDoc(doc(db, "users", myUid), { name, year, department });
+      await updateProfile(auth.currentUser, { displayName: name });
+      document.getElementById("user-name").textContent = name;
+      document.getElementById("user-initials").textContent =
+        name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+      status.textContent = "✓ Saved";
+      setTimeout(() => { status.textContent = ""; }, 2500);
+    } catch (err) {
+      status.textContent = "Failed: " + err.message;
+      status.style.color = "#A83C2E";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+</script>
+
+</body>
+</html>

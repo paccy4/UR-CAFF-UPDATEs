@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Notifications</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header">
+    <div class="ledger-rule" id="scope-label">For your year &amp; department</div>
+    <h1>Notifications</h1>
+    <p>Room updates, announcements,new assignments,and attendance as they happen.</p>
+  </div>
+
+  <div class="loading-row" id="loading-row">
+    <div class="spinner"></div> Loading notifications…
+  </div>
+
+  <div class="announcement-list" id="notif-list" style="display:none;"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>Nothing yet</h3>
+    <p>Room changes, announcements,new assignments and attendance for your year and department will show up here.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, collection, onSnapshot, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const list = document.getElementById("notif-list");
+  const emptyState = document.getElementById("empty-state");
+  const loadingRow = document.getElementById("loading-row");
+
+  let myProfile = null;
+
+  const TYPE_LABEL = { room: "Room", announcement: "Announcement", assignment: "Assignment" };
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    myProfile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (myProfile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    const isStaff = myProfile.role === "staff";
+    if (!isStaff) document.getElementById("admin-nav-link").style.display = "none";
+    document.getElementById("scope-label").textContent = isStaff
+      ? "Everything, across all years & departments"
+      : `${myProfile.year} · ${myProfile.department}`;
+
+    listenForNotifications(isStaff);
+
+    // Mark everything as seen now that the page has been opened.
+    localStorage.setItem("notif_last_seen", Date.now().toString());
+  });
+
+  function matchesMe(n) {
+    const yearOk = n.year === "all" || n.year === myProfile.year;
+    const deptOk = !n.department || n.department === "all" || n.department === myProfile.department;
+    return yearOk && deptOk;
+  }
+
+  function listenForNotifications(isStaff) {
+    const q = query(collection(db, "notifications"));
+    onSnapshot(q, (snap) => {
+      loadingRow.style.display = "none";
+      const items = [];
+      snap.forEach((d) => {
+        const n = d.data();
+        if (isStaff || (matchesMe(n) && !n.staffOnly)) items.push(n);
+      });
+      items.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+      if (items.length === 0) {
+        emptyState.style.display = "block";
+        list.style.display = "none";
+        return;
+      }
+      emptyState.style.display = "none";
+      list.style.display = "flex";
+      list.innerHTML = "";
+      items.forEach((n) => list.appendChild(renderItem(n)));
+    }, (err) => {
+      loadingRow.style.display = "none";
+      emptyState.style.display = "block";
+      document.querySelector("#empty-state h3").textContent = "Couldn't load notifications";
+      document.querySelector("#empty-state p").textContent = err.message;
+    });
+  }
+
+  function renderItem(n) {
+    const card = document.createElement(n.link ? "a" : "div");
+    card.className = "announcement-card";
+    if (n.link) {
+      card.href = n.link;
+      card.style.textDecoration = "none";
+      card.style.color = "inherit";
+      card.style.display = "block";
+      card.style.cursor = "pointer";
+    }
+    const when = n.createdAt && n.createdAt.toDate ? n.createdAt.toDate().toLocaleString() : "";
+    card.innerHTML = `
+      <div class="announcement-head">
+        <h3 class="announcement-title">${escapeHtml(n.title || "")}</h3>
+        <span class="announcement-meta">${escapeHtml(when)}</span>
+      </div>
+      <div class="announcement-body">${escapeHtml(n.body || "")}</div>
+      <div class="announcement-tags">
+        <span class="tag-pill">${escapeHtml(TYPE_LABEL[n.type] || "Update")}</span>
+      </div>
+    `;
+    return card;
+  }
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+</script>
+
+</body>
+</html>

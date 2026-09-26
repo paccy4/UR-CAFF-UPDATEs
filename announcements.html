@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Announcements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html" class="active">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header">
+    <div class="ledger-rule" id="scope-label">For your year &amp; department</div>
+    <h1>Announcements</h1>
+    <p id="dash-sub">Posted by your CP/CPN and staff.</p>
+  </div>
+
+  <div id="composer" class="composer" style="display:none;">
+    <form id="post-form">
+      <div class="field" style="margin-bottom:12px;">
+        <label>Title</label>
+        <input type="text" id="post-title" required placeholder="e.g. Lab schedule change this week">
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Message</label>
+        <textarea id="post-body" required placeholder="Write the announcement…"></textarea>
+      </div>
+      <div class="composer-row" id="staff-target-row" style="display:none;">
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label>Year</label>
+          <select id="post-year">
+            <option value="all">All years</option>
+            <option value="Year 1">Year 1</option>
+            <option value="Year 2">Year 2</option>
+            <option value="Year 3">Year 3</option>
+            <option value="Year 4">Year 4</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1; margin-bottom:0;">
+          <label>Department</label>
+          <select id="post-department">
+            <option value="all">All departments</option>
+            <option value="FST">FST</option>
+            <option value="CROP">CROP</option>
+            <option value="HORT">HORT</option>
+            <option value="AEA">AEA</option>
+            <option value="AGRO">AGRO</option>
+            <option value="FLM">FLM</option>
+            <option value="EGM">EGM</option>
+            <option value="AMC">AMC</option>
+            <option value="ALI">ALI</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn" id="post-btn" style="width:auto; padding:11px 20px;">Post announcement</button>
+    </form>
+  </div>
+
+  <div id="staff-filter-row" style="display:none; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
+    <select id="year-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All years</option>
+      <option value="Year 1">Year 1</option>
+      <option value="Year 2">Year 2</option>
+      <option value="Year 3">Year 3</option>
+      <option value="Year 4">Year 4</option>
+    </select>
+    <select id="department-filter" style="padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+      <option value="">All departments</option>
+    </select>
+  </div>
+
+  <div class="loading-row" id="loading-row">
+    <div class="spinner"></div> Loading announcements…
+  </div>
+
+  <div class="announcement-list" id="announcement-list" style="display:none;"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>Nothing posted yet</h3>
+    <p>Announcements from your CP/CPN or staff will show up here.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection, addDoc, deleteDoc, getDocs,
+    onSnapshot, orderBy, query, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const list = document.getElementById("announcement-list");
+  const emptyState = document.getElementById("empty-state");
+  const loadingRow = document.getElementById("loading-row");
+  const composer = document.getElementById("composer");
+  const staffTargetRow = document.getElementById("staff-target-row");
+
+  let myProfile = null;
+  let myUid = null;
+  let canPost = false;
+  let isStaff = false;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+    myUid = user.uid;
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    myProfile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (myProfile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    canPost = myProfile.role === "cp_cpn" || myProfile.role === "staff";
+    isStaff = myProfile.role === "staff";
+    if (!isStaff) document.getElementById("admin-nav-link").style.display = "none";
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === myProfile.year;
+          const deptOk = !n.department || n.department === "all" || n.department === myProfile.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((myProfile.role === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+
+    if (canPost) {
+      composer.style.display = "block";
+      if (isStaff) {
+        staffTargetRow.style.display = "flex";
+        document.getElementById("scope-label").textContent = "All years & departments";
+        document.getElementById("dash-sub").textContent = "You can post to a specific year/department, or everyone.";
+        document.getElementById("staff-filter-row").style.display = "flex";
+      } else {
+        document.getElementById("dash-sub").textContent =
+          `Posting as ${myProfile.year} · ${myProfile.department}. Only students there will see it.`;
+      }
+    } else {
+      document.getElementById("scope-label").textContent = `${myProfile.year} · ${myProfile.department}`;
+    }
+
+    listenForAnnouncements();
+  });
+
+  let latestVisible = [];
+
+  function listenForAnnouncements() {
+    const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snap) => {
+      loadingRow.style.display = "none";
+
+      const visible = [];
+      snap.forEach((docSnap) => {
+        const a = docSnap.data();
+        if (isStaff || matchesMe(a)) visible.push({ id: docSnap.id, ...a });
+      });
+      latestVisible = visible;
+
+      if (isStaff) {
+        const depts = [...new Set(visible.map(a => a.department).filter(d => d && d !== "all"))].sort();
+        const deptSel = document.getElementById("department-filter");
+        const current = deptSel.value;
+        deptSel.innerHTML = `<option value="">All departments</option>` +
+          depts.map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`).join("");
+        deptSel.value = current;
+      }
+
+      renderFiltered();
+    }, (err) => {
+      loadingRow.style.display = "none";
+      emptyState.style.display = "block";
+      document.querySelector("#empty-state p").textContent = "Couldn't load announcements: " + err.message;
+    });
+  }
+
+  function renderFiltered() {
+    const yearFilter = document.getElementById("year-filter").value;
+    const deptFilter = document.getElementById("department-filter").value;
+    const filtered = isStaff
+      ? latestVisible.filter(a => (!yearFilter || a.year === yearFilter) && (!deptFilter || a.department === deptFilter))
+      : latestVisible;
+
+    if (filtered.length === 0) {
+      emptyState.style.display = "block";
+      list.style.display = "none";
+      return;
+    }
+    emptyState.style.display = "none";
+    list.style.display = "flex";
+    list.innerHTML = "";
+    filtered.forEach((a) => list.appendChild(renderCard(a)));
+  }
+
+  document.getElementById("year-filter").addEventListener("change", renderFiltered);
+  document.getElementById("department-filter").addEventListener("change", renderFiltered);
+
+  function matchesMe(a) {
+    const yearOk = a.year === "all" || a.year === myProfile.year;
+    const deptOk = !a.department || a.department === "all" || a.department === myProfile.department;
+    return yearOk && deptOk;
+  }
+
+  function renderCard(a) {
+    const card = document.createElement("div");
+    card.className = "announcement-card";
+    const when = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().toLocaleString() : "";
+    const canDelete = isStaff || a.authorUid === myUid;
+
+    card.innerHTML = `
+      <div class="announcement-head">
+        <h3 class="announcement-title">${escapeHtml(a.title || "")}</h3>
+        <span class="announcement-meta">${escapeHtml(a.authorName || "")} · ${escapeHtml(when)}</span>
+      </div>
+      <div class="announcement-body">${escapeHtml(a.body || "")}</div>
+      <div class="announcement-tags">
+        <span class="tag-pill">${escapeHtml(a.year === "all" ? "All years" : (a.year || ""))}</span>
+        <span class="tag-pill">${escapeHtml((!a.department || a.department === "all") ? "All departments" : a.department)}</span>
+      </div>
+      ${canDelete ? `<button class="delete-link" data-id="${a.id}">Delete</button>` : ""}
+    `;
+
+    if (canDelete) {
+      card.querySelector(".delete-link").onclick = async () => {
+        if (confirm("Delete this announcement?")) {
+          await deleteDoc(doc(db, "announcements", a.id));
+        }
+      };
+    }
+    return card;
+  }
+
+  document.getElementById("post-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("post-title").value.trim();
+    const body = document.getElementById("post-body").value.trim();
+    if (!title || !body) return;
+
+    const year = isStaff ? document.getElementById("post-year").value : myProfile.year;
+    const department = isStaff
+      ? document.getElementById("post-department").value
+      : myProfile.department;
+
+    await addDoc(collection(db, "announcements"), {
+      title, body, year, department,
+      authorUid: myUid,
+      authorName: myProfile.name || auth.currentUser.email,
+      authorRole: myProfile.role,
+      createdAt: serverTimestamp()
+    });
+    await addDoc(collection(db, "notifications"), {
+      type: "announcement",
+      title: `New announcement: ${title}`,
+      body: `Posted by ${myProfile.name || auth.currentUser.email}`,
+      link: "announcements.html",
+      year, department,
+      createdAt: serverTimestamp()
+    });
+
+    document.getElementById("post-title").value = "";
+    document.getElementById("post-body").value = "";
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+  function escapeAttr(str) { return escapeHtml(str || ""); }
+</script>
+
+</body>
+</html>

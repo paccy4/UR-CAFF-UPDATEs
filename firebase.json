@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "ur-caff-courses",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

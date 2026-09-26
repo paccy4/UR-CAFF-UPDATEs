@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Congratulations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="brand">
+        <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+        <div class="brand-name">UR-CAFF UPDATE</div>
+      </div>
+
+      <h1 class="auth-title">Congratulations, <span id="grad-name">graduate</span> 🎓</h1>
+      <p class="auth-sub">Your account is marked as graduated, so it's no longer part of active room status, announcements, assignments, or groups  but everything you submitted stays on record.</p>
+      <p class="auth-sub">If this was a mistake, contact a staff member they can switch your account back from the Admin page.</p>
+
+      <button class="btn" id="logout-btn">Log out</button>
+    </div>
+  </div>
+
+  <div class="showcase">
+    <img src="campus.png" alt="UR-CAFF Musanze campus" class="showcase-photo">
+    <div class="showcase-content">
+      <p class="showcase-lead">Wishing you well beyond UR-CAFF.</p>
+      <div class="feature-list">
+        <div class="feature-item">Thank you for using the platform during your time here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    const profile = profileSnap.exists() ? profileSnap.data() : {};
+
+    // If someone lands here whose role isn't (or no longer is) graduated,
+    // don't trap them — send them back into the app.
+    if (profile.role !== "graduated") { window.location.href = "home.html"; return; }
+
+    const firstName = (profile.name || user.displayName || "").split(" ")[0];
+    if (firstName) document.getElementById("grad-name").textContent = firstName;
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+</script>
+
+</body>
+</html>

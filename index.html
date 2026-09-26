@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="auth-shell">
+
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div class="brand">
+        <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+        <div class="brand-name">UR-CAFF UPDATE</div>
+      </div>
+
+      <div id="signin-view">
+        <h1 class="auth-title">Sign in</h1>
+        <p class="auth-sub">Use your campus email and the password you set when you registered.</p>
+
+        <div class="error-box" id="signin-error"></div>
+
+        <form id="signin-form">
+          <div class="field">
+            <label for="si-email">Campus email</label>
+            <input type="email" id="si-email" required autocomplete="email" placeholder="you@ur.ac.rw">
+          </div>
+          <div class="field">
+            <label for="si-password">Password</label>
+            <input type="password" id="si-password" required autocomplete="current-password" placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn" id="signin-btn">Sign in</button>
+        </form>
+
+        <div class="toggle-row">
+          New here? <button type="button" id="show-signup">Create an account</button>
+        </div>
+      </div>
+
+      <div id="signup-view" style="display:none;">
+        <h1 class="auth-title">Create your account</h1>
+        <p class="auth-sub">Room status, announcements, and assignments are all shown by year and department — so we need those to set up your account.</p>
+
+        <div class="error-box" id="signup-error"></div>
+
+        <form id="signup-form">
+          <div class="field">
+            <label for="su-name">Full name</label>
+            <input type="text" id="su-name" required autocomplete="name" placeholder="Your full name">
+          </div>
+          <div class="field">
+            <label for="su-email">Campus email</label>
+            <input type="email" id="su-email" required autocomplete="email" placeholder="you@ur.ac.rw">
+          </div>
+          <div class="field">
+            <label for="su-joincode">Class join code</label>
+            <input type="text" id="su-joincode" required autocomplete="off" placeholder="Ask your CP/CPN or staff">
+          </div>
+          <div class="field">
+            <label for="su-year">Year</label>
+            <select id="su-year">
+              <option value="Year 1">Year 1</option>
+              <option value="Year 2">Year 2</option>
+              <option value="Year 3">Year 3</option>
+              <option value="Year 4">Year 4</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="su-department">Department</label>
+            <select id="su-department">
+              <option value="FST">FST</option>
+              <option value="CROP">CROP</option>
+              <option value="HORT">HORT</option>
+              <option value="AEA">AEA</option>
+              <option value="AGRO">AGRO</option>
+              <option value="FLM">FLM</option>
+              <option value="EGM">EGM</option>
+              <option value="AMC">AMC</option>
+              <option value="ALI">ALI</option>
+              <option value="__other">Other (type it in)</option>
+            </select>
+            <input type="text" id="su-department-other" placeholder="Type your department"
+              style="display:none; margin-top:8px;">
+          </div>
+          <div class="field">
+            <label for="su-joincode">Campus access code</label>
+            <input type="text" id="su-joincode" required autocomplete="off" placeholder="Ask your CP/CPN or staff for this">
+          </div>
+          <div class="field">
+            <label for="su-password">Password</label>
+            <input type="password" id="su-password" required autocomplete="new-password" placeholder="At least 6 characters">
+          </div>
+          <button type="submit" class="btn" id="signup-btn">Create account</button>
+        </form>
+        <p style="font-size:12px; color:#5B6259; margin-top:14px; line-height:1.5;">
+          Everyone registers as a Student here. CP/CPN and Staff accounts are upgraded afterward by an admin. This is on purpose, so no one can grant themselves management access.
+        </p>
+
+        <div class="toggle-row">
+          Already registered? <button type="button" id="show-signin">Sign in</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="showcase">
+    <img src="campus.png" alt="UR-CAFF Musanze campus" class="showcase-photo">
+    <div class="showcase-content">
+      <p class="showcase-lead">One place for everything happening at UR-CAFF Musanze:</p>
+      <div class="feature-list">
+        <div class="feature-item"><strong>Room status</strong> — see which rooms are free or occupied, live.</div>
+        <div class="feature-item"><strong>Announcements</strong> — posts from your CP/CPN and staff, for your year &amp; department.</div>
+        <div class="feature-item"><strong>Assignments</strong> — submit your work, individually or as a group.</div>
+        <div class="feature-item"><strong>Groups</strong> — see who you're working with.</div>
+        <div class="feature-item"><strong>Attendance</strong> — Show your check-in code to your CP/CPN or staff to be marked present  or start a session and scan students in.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    onAuthStateChanged, updateProfile, sendEmailVerification
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // While a sign-up is actively writing the profile to Firestore, we don't
+  // want the auth-state listener below to redirect early  it fires the
+  // instant the account is created, which can be before the profile
+  // (role/year/department) has finished saving.
+  let signupInProgress = false;
+
+  // If already signed in, route to verification or the app.
+  onAuthStateChanged(auth, (user) => {
+    if (!user || signupInProgress) return;
+    window.location.href = user.emailVerified ? "home.html" : "verify-email.html";
+  });
+
+
+  const signinView = document.getElementById("signin-view");
+  const signupView = document.getElementById("signup-view");
+  document.getElementById("show-signup").onclick = () => {
+    signinView.style.display = "none";
+    signupView.style.display = "block";
+  };
+  document.getElementById("show-signin").onclick = () => {
+    signupView.style.display = "none";
+    signinView.style.display = "block";
+  };
+
+  document.getElementById("su-department").addEventListener("change", (e) => {
+    document.getElementById("su-department-other").style.display = e.target.value === "__other" ? "block" : "none";
+  });
+
+  function showError(boxId, message) {
+    const box = document.getElementById(boxId);
+    box.textContent = message;
+    box.classList.add("show");
+  }
+  function clearError(boxId) {
+    document.getElementById(boxId).classList.remove("show");
+  }
+
+  function friendlyError(err) {
+    const code = err.code || "";
+    if (code.includes("email-already-in-use")) return "That email is already registered. Try signing in instead.";
+    if (code.includes("invalid-credential") || code.includes("wrong-password")) return "Email or password is incorrect.";
+    if (code.includes("user-not-found")) return "No account found with that email.";
+    if (code.includes("weak-password")) return "Password should be at least 6 characters.";
+    if (code.includes("invalid-email")) return "That email address doesn't look right.";
+    return "Something went wrong. Please try again.";
+  }
+
+  document.getElementById("signin-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError("signin-error");
+    const btn = document.getElementById("signin-btn");
+    btn.disabled = true; btn.textContent = "Signing in…";
+    try {
+      const email = document.getElementById("si-email").value.trim();
+      const password = document.getElementById("si-password").value;
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      window.location.href = cred.user.emailVerified ? "home.html" : "verify-email.html";
+    } catch (err) {
+      showError("signin-error", friendlyError(err));
+    } finally {
+      btn.disabled = false; btn.textContent = "Sign in";
+    }
+  });
+
+  document.getElementById("signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError("signup-error");
+    const btn = document.getElementById("signup-btn");
+    btn.disabled = true; btn.textContent = "Creating account…";
+    signupInProgress = true;
+    try {
+      const CLASS_JOIN_CODE = "CAFF2026"; // change this any time — share only with real students
+      const enteredCode = document.getElementById("su-joincode").value.trim();
+      if (enteredCode.toUpperCase() !== CLASS_JOIN_CODE.toUpperCase()) {
+        showError("signup-error", "That join code isn't right, ask your CP/CPN or staff for the current one.");
+        signupInProgress = false;
+        btn.disabled = false; btn.textContent = "Create account";
+        return;
+      }
+
+      const name = document.getElementById("su-name").value.trim();
+      const email = document.getElementById("su-email").value.trim();
+      const role = "student"; // CP/CPN and Staff are granted manually by an admin, never self-selected
+      const year = document.getElementById("su-year").value;
+      const deptSelect = document.getElementById("su-department").value;
+      const department = deptSelect === "__other"
+        ? document.getElementById("su-department-other").value.trim()
+        : deptSelect;
+      const password = document.getElementById("su-password").value;
+
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name });
+
+      // Store role + year + department in Firestore. Almost everything in the
+      // app (room status, announcements, assignments) is scoped by year+department,
+      // so these three fields matter more than anything else on the profile.
+      await setDoc(doc(db, "users", cred.user.uid), {
+        name, email, role, year, department, createdAt: serverTimestamp()
+      });
+
+      await sendEmailVerification(cred.user);
+      window.location.href = "verify-email.html";
+    } catch (err) {
+      signupInProgress = false;
+      showError("signup-error", friendlyError(err));
+    } finally {
+      btn.disabled = false; btn.textContent = "Create account";
+    }
+  });
+</script>
+
+</body>
+</html>

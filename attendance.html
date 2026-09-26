@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"
+  onerror="this.onerror=null; var s=document.createElement('script'); s.src='https://unpkg.com/jsqr@1.4.0/dist/jsQR.min.js'; document.head.appendChild(s);"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html" class="active">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header">
+    <div class="ledger-rule" id="scope-label">For your year &amp; department</div>
+    <h1>Attendance</h1>
+    <p id="dash-sub">Start a session, then scan each student's personal QR code (from their profile) with your phone camera to mark them present.</p>
+  </div>
+
+  <div id="composer" class="composer" style="display:none;">
+    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="field" style="flex:1; min-width:160px; margin-bottom:0;">
+        <label>Session name</label>
+        <input type="text" id="session-title" required placeholder="e.g. Monday morning lecture">
+      </div>
+      <div class="field" style="flex:1; min-width:160px; margin-bottom:0;">
+        <label>Lecturer</label>
+        <input type="text" id="session-lecturer" placeholder="e.g. Dr. Uwase">
+      </div>
+      <div class="field" style="margin-bottom:0; width:150px;">
+        <label>Date</label>
+        <input type="date" id="session-date">
+      </div>
+      <div class="field" style="margin-bottom:0; width:110px;">
+        <label>Starts</label>
+        <input type="time" id="session-start">
+      </div>
+      <div class="field" style="margin-bottom:0; width:110px;">
+        <label>Ends</label>
+        <input type="time" id="session-end">
+      </div>
+      <div class="field" id="staff-year-field" style="display:none; margin-bottom:0; width:130px;">
+        <label>Year</label>
+        <select id="session-year">
+          <option value="Year 1">Year 1</option>
+          <option value="Year 2">Year 2</option>
+          <option value="Year 3">Year 3</option>
+          <option value="Year 4">Year 4</option>
+        </select>
+      </div>
+      <div class="field" id="staff-dept-field" style="display:none; margin-bottom:0; width:130px;">
+        <label>Department</label>
+        <select id="session-department">
+          <option value="FST">FST</option>
+          <option value="CROP">CROP</option>
+          <option value="HORT">HORT</option>
+          <option value="AEA">AEA</option>
+          <option value="AGRO">AGRO</option>
+          <option value="FLM">FLM</option>
+          <option value="EGM">EGM</option>
+          <option value="AMC">AMC</option>
+          <option value="ALI">ALI</option>
+        </select>
+      </div>
+      <button type="button" class="btn" id="start-session-btn" style="width:auto; padding:11px 20px;">Start session</button>
+    </div>
+  </div>
+
+  <div class="loading-row" id="loading-row">
+    <div class="spinner"></div> Loading sessions…
+  </div>
+
+  <div class="announcement-list" id="session-list" style="display:none;"></div>
+
+  <canvas id="scan-canvas" style="display:none;"></canvas>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>No attendance sessions yet</h3>
+    <p>Once a CP/CPN or staff starts one, it'll show up here.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, deleteDoc, collection, addDoc, getDocs,
+    onSnapshot, orderBy, query, where, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const list = document.getElementById("session-list");
+  const emptyState = document.getElementById("empty-state");
+  const loadingRow = document.getElementById("loading-row");
+
+  let myProfile = null;
+  let myUid = null;
+  let canManage = false;
+  let isStaff = false;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "index.html"; return; }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+    myUid = user.uid;
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    myProfile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (myProfile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    canManage = myProfile.role === "cp_cpn" || myProfile.role === "staff";
+    isStaff = myProfile.role === "staff";
+    if (!isStaff) document.getElementById("admin-nav-link").style.display = "none";
+
+    if (canManage) {
+      document.getElementById("composer").style.display = "block";
+      document.getElementById("session-date").value = new Date().toISOString().slice(0, 10);
+      if (isStaff) {
+        document.getElementById("staff-year-field").style.display = "block";
+        document.getElementById("staff-dept-field").style.display = "block";
+        document.getElementById("scope-label").textContent = "All years & departments";
+        const yearSelect = document.getElementById("session-year");
+        const allYearOpt = document.createElement("option");
+        allYearOpt.value = "all";
+        allYearOpt.textContent = "All years";
+        yearSelect.insertBefore(allYearOpt, yearSelect.firstChild);
+        const deptSelect = document.getElementById("session-department");
+        const allOpt = document.createElement("option");
+        allOpt.value = "all";
+        allOpt.textContent = "All departments";
+        deptSelect.insertBefore(allOpt, deptSelect.firstChild);
+        deptSelect.value = "all";
+      } else {
+        document.getElementById("dash-sub").textContent = `Sessions you start are for ${myProfile.year} · ${myProfile.department}.`;
+      }
+    } else {
+      document.getElementById("scope-label").textContent = `${myProfile.year} · ${myProfile.department}`;
+    }
+
+    listenForSessions();
+  });
+
+  function matchesMe(s) {
+    const yearOk = s.year === "all" || s.year === myProfile.year;
+    const deptOk = s.department === "all" || s.department === myProfile.department;
+    return yearOk && deptOk;
+  }
+
+  let lastVisibleSessions = [];
+
+  function renderVisibleSessions(visible) {
+    stopActiveScan();
+    if (visible.length === 0) {
+      emptyState.style.display = "block";
+      list.style.display = "none";
+      return;
+    }
+    emptyState.style.display = "none";
+    list.style.display = "flex";
+    list.innerHTML = "";
+    visible.forEach((s) => list.appendChild(renderSessionCard(s)));
+  }
+
+  function listenForSessions() {
+    const q = query(collection(db, "attendance_sessions"), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snap) => {
+      loadingRow.style.display = "none";
+      const visible = [];
+      snap.forEach((d) => {
+        const s = d.data();
+        if (isStaff || matchesMe(s)) visible.push({ id: d.id, ...s });
+      });
+      lastVisibleSessions = visible;
+      renderVisibleSessions(visible);
+    }, (err) => {
+      loadingRow.style.display = "none";
+      emptyState.style.display = "block";
+      document.querySelector("#empty-state p").textContent = "Couldn't load sessions: " + err.message;
+    });
+
+    // Keeps "Active now" / "Ended" badges and the Scan buttons accurate even if
+    // a CP/CPN leaves this page open past a session's end time  but skips
+    // rebuilding while a camera is actively open, so it never interrupts a scan.
+    setInterval(() => {
+      if (activeScan) return;
+      if (lastVisibleSessions.length) renderVisibleSessions(lastVisibleSessions);
+    }, 60000);
+  }
+
+  function getSessionStatus(s) {
+    if (!s.sessionDate || !s.startTime || !s.endTime) return null;
+    const graceMs = 15 * 60 * 1000;
+    const now = Date.now();
+    const startDt = new Date(`${s.sessionDate}T${s.startTime}:00`).getTime();
+    const endDt = new Date(`${s.sessionDate}T${s.endTime}:00`).getTime();
+    if (now < startDt - graceMs) return "upcoming";
+    if (now > endDt + graceMs) return "ended";
+    return "active";
+  }
+
+  function statusBadgeHtml(status) {
+    if (status === "active") return `<span class="tag-pill" style="background:#DDEFE2; color:#17463C;">● Active now</span>`;
+    if (status === "ended") return `<span class="tag-pill" style="background:#F3E4E0; color:#A83C2E;">Ended</span>`;
+    if (status === "upcoming") return `<span class="tag-pill">Starts soon</span>`;
+    return "";
+  }
+
+  function renderSessionCard(s) {
+    const card = document.createElement("div");
+    card.className = "announcement-card";
+    card.dataset.sessionId = s.id;
+    const when = s.createdAt && s.createdAt.toDate ? s.createdAt.toDate().toLocaleString() : "";
+    const isManager = isStaff || (myProfile.role === "cp_cpn" && matchesMe(s));
+    const status = getSessionStatus(s);
+
+    card.innerHTML = `
+      <div class="announcement-head">
+        <h3 class="announcement-title">${escapeHtml(s.title || "")}</h3>
+        <span class="announcement-meta">${escapeHtml(s.createdByName || "")} · ${escapeHtml(when)}</span>
+      </div>
+      ${s.lecturer ? `<div style="font-size:13px; color:#5B6259; margin-top:2px;">Lecturer: ${escapeHtml(s.lecturer)}</div>` : ""}
+      ${s.sessionDate ? `<div style="font-size:14px; font-weight:600; color:#17463C; margin-top:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span>${escapeHtml(s.sessionDate)} · ${escapeHtml(s.startTime)}–${escapeHtml(s.endTime)}</span>
+        <span class="status-badge">${statusBadgeHtml(status)}</span>
+      </div>` : ""}
+      <div class="announcement-tags">
+        <span class="tag-pill">${escapeHtml(s.year)}</span>
+        <span class="tag-pill">${escapeHtml(s.department)}</span>
+      </div>
+      <div class="session-body" style="margin-top:14px;"></div>
+    `;
+
+    const body = card.querySelector(".session-body");
+    if (isManager) {
+      body.appendChild(buildManagerPanel(s));
+    } else {
+      body.innerHTML = `<p class="my-attendance-status" style="font-size:13px; color:#5B6259;">Checking…</p>`;
+      onSnapshot(doc(db, "attendance_records", `${s.id}_${myUid}`), (snap) => {
+        const statusEl = body.querySelector(".my-attendance-status");
+        if (!statusEl) return;
+        if (snap.exists()) {
+          const r = snap.data();
+          const when = r.scannedAt && r.scannedAt.toDate
+            ? r.scannedAt.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "";
+          statusEl.style.color = "#17463C";
+          statusEl.textContent = `✓ You were marked present${when ? " at " + when : ""}${r.manualEntry ? " (added manually)" : ""}.`;
+        } else {
+          statusEl.style.color = "#5B6259";
+          statusEl.textContent = "Not marked present yet. Ask your CP/CPN or staff to scan your check-in code.";
+        }
+      });
+    }
+    return card;
+  }
+
+  function buildManagerPanel(s) {
+    const wrap = document.createElement("div");
+    const status = getSessionStatus(s);
+    const ended = status === "ended";
+    wrap.innerHTML = `
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        ${ended
+          ? `<p style="font-size:13px; color:#A83C2E; margin:0;">This session's check-in window closed at ${escapeHtml(s.endTime)} — no more scans or manual entries accepted.</p>`
+          : `<button class="btn" id="scan-toggle-${s.id}" style="width:auto; padding:9px 16px; font-size:13px;">Scan students</button>
+        <button class="btn btn-ghost" id="manual-toggle-${s.id}" style="width:auto; padding:8px 16px; font-size:13px;">Can't scan? Mark manually</button>`}
+        <button class="btn btn-ghost" id="dl-${s.id}" style="width:auto; padding:8px 16px; font-size:13px;">Download CSV</button>
+        ${isStaff ? `<button id="delete-session-${s.id}" style="background:none; border:1.5px solid #E9B7AC; color:#A83C2E; border-radius:8px; padding:7px 12px; font-size:12.5px; cursor:pointer;">Delete session</button>` : ""}
+        <p id="count-${s.id}" style="font-size:13px; color:#5B6259; margin:0;">Loading count…</p>
+      </div>
+      ${ended ? "" : `
+      <div id="scan-area-${s.id}" style="display:none; margin-top:12px;">
+        <div style="position:relative; width:260px;">
+          <video id="video-${s.id}" style="width:260px; height:260px; object-fit:cover; border-radius:12px; background:#000; display:block;" playsinline muted></video>
+          <button type="button" id="torch-${s.id}" style="display:none; position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,.55); color:#fff; border:none; border-radius:8px; padding:6px 10px; font-size:12px;">💡 Light</button>
+        </div>
+        <p id="scan-status-${s.id}" style="font-size:12.5px; color:#8A8F86; margin:8px 0 0;">Point the camera at the student's QR — hold steady, about 15–20cm away.</p>
+        <p id="scan-result-${s.id}" style="font-size:13px; margin-top:4px; min-height:18px;"></p>
+      </div>
+      <div id="manual-area-${s.id}" style="display:none; margin-top:12px;">
+        <input type="text" id="manual-search-${s.id}" placeholder="Type a student's name…" style="width:100%; max-width:280px; padding:9px 12px; border:1.5px solid var(--field); border-radius:10px; font-size:14px;">
+        <div id="manual-results-${s.id}" style="max-height:200px; overflow-y:auto; margin-top:8px;"></div>
+      </div>`}
+      <div id="roll-wrap-${s.id}" style="margin-top:10px;">
+        <div id="roll-preview-${s.id}" style="display:flex; flex-direction:column; gap:2px;"></div>
+        <button type="button" id="roll-toggle-${s.id}" style="display:none; background:none; border:none; color:#17463C; font-weight:600; font-size:12.5px; padding:6px 0; cursor:pointer;"></button>
+        <input type="text" id="roll-search-${s.id}" placeholder="Find a name in this list…" style="display:none; width:100%; max-width:280px; padding:8px 12px; border:1.5px solid var(--field); border-radius:10px; font-size:13px; margin-top:6px;">
+        <div id="roll-${s.id}" style="display:none; max-height:320px; overflow-y:auto; margin-top:8px; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:4px 12px;"></div>
+      </div>
+    `;
+
+    let rollRows = [];
+    let rollExpanded = false;
+    const PREVIEW_COUNT = 2;
+
+    onSnapshot(query(collection(db, "attendance_records"), where("sessionId", "==", s.id)), (snap) => {
+      rollRows = [];
+      snap.forEach(d => rollRows.push(d.data()));
+      rollRows.sort((a, b) => (a.studentName || "").localeCompare(b.studentName || ""));
+      document.getElementById(`count-${s.id}`).textContent = `${rollRows.length} scanned in`;
+      renderRoll(s.id);
+    });
+
+    function rollRowHtml(r) {
+      return `
+        <div class="roll-row">
+          <span>${escapeHtml(r.studentName)}</span>
+          <span style="font-size:11px; color:#8A8F86;">${r.manualEntry ? "manual · " : ""}by ${escapeHtml(r.scannedByName || "")}</span>
+        </div>
+      `;
+    }
+
+    function renderRoll(sessionId) {
+      const previewEl = document.getElementById(`roll-preview-${sessionId}`);
+      const toggleBtn = document.getElementById(`roll-toggle-${sessionId}`);
+      const searchBox = document.getElementById(`roll-search-${sessionId}`);
+      const rollEl = document.getElementById(`roll-${sessionId}`);
+      if (!previewEl || !rollEl) return;
+
+      if (!rollExpanded) {
+        previewEl.style.display = "flex";
+        rollEl.style.display = "none";
+        searchBox.style.display = "none";
+        previewEl.innerHTML = rollRows.slice(0, PREVIEW_COUNT).map(rollRowHtml).join("");
+        if (rollRows.length > PREVIEW_COUNT) {
+          toggleBtn.style.display = "block";
+          toggleBtn.textContent = `View all ${rollRows.length} scanned →`;
+        } else {
+          toggleBtn.style.display = "none";
+        }
+        return;
+      }
+
+      // Expanded view
+      previewEl.style.display = "none";
+      rollEl.style.display = "grid";
+      searchBox.style.display = "block";
+      toggleBtn.style.display = "block";
+      toggleBtn.textContent = "Show less ↑";
+
+      const term = (searchBox.value || "").trim().toLowerCase();
+      const filtered = term ? rollRows.filter(r => (r.studentName || "").toLowerCase().includes(term)) : rollRows;
+      rollEl.innerHTML = filtered.map(rollRowHtml).join("") ||
+        (term ? `<p style="font-size:13px; color:#5B6259;">No match for "${escapeHtml(term)}".</p>` : "");
+    }
+
+    wrap.querySelector(`#roll-toggle-${s.id}`).addEventListener("click", () => {
+      rollExpanded = !rollExpanded;
+      renderRoll(s.id);
+    });
+    wrap.querySelector(`#roll-search-${s.id}`).addEventListener("input", () => renderRoll(s.id));
+
+    wrap.querySelector(`#dl-${s.id}`).onclick = () => downloadCsv(s);
+    wrap.querySelector(`#delete-session-${s.id}`)?.addEventListener("click", () => deleteSession(s));
+    wrap.querySelector(`#scan-toggle-${s.id}`)?.addEventListener("click", () => toggleScan(s));
+    wrap.querySelector(`#manual-toggle-${s.id}`)?.addEventListener("click", () => toggleManual(s, wrap));
+    return wrap;
+  }
+
+  // Only one session scans at a time — starting a new one stops the last.
+  let activeScan = null; // { sessionId, stream, loopHandle }
+
+  function stopActiveScan() {
+    if (!activeScan) return;
+    if (activeScan.loopHandle) cancelAnimationFrame(activeScan.loopHandle);
+    if (activeScan.stream) activeScan.stream.getTracks().forEach(t => t.stop());
+    const area = document.getElementById(`scan-area-${activeScan.sessionId}`);
+    if (area) area.style.display = "none";
+    const btn = document.getElementById(`scan-toggle-${activeScan.sessionId}`);
+    if (btn) btn.textContent = "Scan students";
+    activeScan = null;
+  }
+
+  async function toggleScan(s) {
+    if (activeScan && activeScan.sessionId === s.id) { stopActiveScan(); return; }
+    stopActiveScan();
+
+    const area = document.getElementById(`scan-area-${s.id}`);
+    const video = document.getElementById(`video-${s.id}`);
+    const resultEl = document.getElementById(`scan-result-${s.id}`);
+    const statusEl = document.getElementById(`scan-status-${s.id}`);
+    const torchBtn = document.getElementById(`torch-${s.id}`);
+    const btn = document.getElementById(`scan-toggle-${s.id}`);
+    const canvas = document.getElementById("scan-canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (typeof jsQR === "undefined") {
+      resultEl.style.color = "#A83C2E";
+      resultEl.textContent = "Scanner failed to load. Check your internet connection and reload the page.";
+      area.style.display = "block";
+      return;
+    }
+
+    area.style.display = "block";
+    statusEl.style.color = "#8A8F86";
+    statusEl.textContent = "Loading scanner…";
+    resultEl.textContent = "";
+
+    let waited = 0;
+    while (typeof jsQR === "undefined" && waited < 4000) {
+      await new Promise(r => setTimeout(r, 250));
+      waited += 250;
+    }
+    if (typeof jsQR === "undefined") {
+      statusEl.style.color = "#A83C2E";
+      statusEl.textContent = "The scanner script couldn't load.  Check your internet connection and reload this page. Use \"Mark manually\" for now.";
+      return;
+    }
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (e) {
+      resultEl.style.color = "#A83C2E";
+      resultEl.textContent = "Couldn't access camera: " + e.message;
+      return;
+    }
+    video.srcObject = stream;
+    try {
+      await video.play();
+    } catch (e) {
+      resultEl.style.color = "#A83C2E";
+      resultEl.textContent = "Couldn't start the camera preview: " + e.message;
+      stream.getTracks().forEach(t => t.stop());
+      return;
+    }
+    btn.textContent = "Stop scanning";
+    activeScan = { sessionId: s.id, stream, loopHandle: null };
+
+    // Flashlight toggle, if the device/browser supports it
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    let torchOn = false;
+    if (caps.torch) {
+      torchBtn.style.display = "block";
+      torchBtn.onclick = () => {
+        torchOn = !torchOn;
+        track.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(() => {});
+        torchBtn.textContent = torchOn ? "💡 Off" : "💡 Light";
+      };
+    } else {
+      torchBtn.style.display = "none";
+    }
+
+    let lastSeenAt = 0;
+    const tick = () => {
+      if (!activeScan || activeScan.sessionId !== s.id) return;
+      try {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          const now = Date.now();
+          if (code && code.data) {
+            lastSeenAt = now;
+            statusEl.style.color = "#17463C";
+            statusEl.textContent = "Found a code, checking…";
+            if (code.data.startsWith(QR_PREFIX)) {
+              const parts = code.data.slice(QR_PREFIX.length).split(":");
+              handleScan(s, parts[0], parts[1], resultEl);
+            } else {
+              resultEl.style.color = "#A83C2E";
+              resultEl.textContent = "That's not a UR-CAFF check-in code.";
+            }
+          } else if (now - lastSeenAt > 1500) {
+            statusEl.style.color = "#8A8F86";
+            statusEl.textContent = "Looking for a code  hold steady, about 15–20cm away, good light helps.";
+          }
+        }
+      } catch (err) {
+        statusEl.style.color = "#A83C2E";
+        statusEl.textContent = "Scanner error: " + err.message + "  Try \"Mark manually\" instead.";
+      }
+      activeScan.loopHandle = requestAnimationFrame(tick);
+    };
+    activeScan.loopHandle = requestAnimationFrame(tick);
+  }
+
+  // ---- Manual fallback: search + tap to mark present without the camera ----
+  let manualRosterCache = new Map(); // sessionId -> array of {uid, name, year, department}
+
+  async function toggleManual(s, wrap) {
+    const area = wrap.querySelector(`#manual-area-${s.id}`);
+    const isOpen = area.style.display === "block";
+    area.style.display = isOpen ? "none" : "block";
+    if (isOpen) return;
+
+    if (!manualRosterCache.has(s.id)) {
+      const q = s.year === "all" ? collection(db, "users") : query(collection(db, "users"), where("year", "==", s.year));
+      const snap = await getDocs(q);
+      const roster = [];
+      snap.forEach(d => {
+        const u = d.data();
+        if (u.role === "graduated") return;
+        if (s.department === "all" || u.department === s.department) {
+          roster.push({ uid: d.id, name: u.name || u.email || "Unknown", role: u.role });
+        }
+      });
+      manualRosterCache.set(s.id, roster);
+    }
+
+    const input = wrap.querySelector(`#manual-search-${s.id}`);
+    const resultsEl = wrap.querySelector(`#manual-results-${s.id}`);
+    const render = () => {
+      const term = input.value.trim().toLowerCase();
+      const roster = manualRosterCache.get(s.id);
+      const matches = term ? roster.filter(r => r.name.toLowerCase().includes(term)) : roster.slice(0, 15);
+      resultsEl.innerHTML = matches.map(r => `
+        <div class="roll-row manual-pick" data-uid="${r.uid}" style="cursor:pointer;">
+          <span>${escapeHtml(r.name)}${r.role !== "student" ? ` <span style="font-size:11px; color:#8A8F86;">(${escapeHtml(r.role)})</span>` : ""}</span>
+          <span style="font-size:12px; color:#17463C;">Mark present</span>
+        </div>
+      `).join("") || `<p style="font-size:13px; color:#5B6259;">No match.</p>`;
+      resultsEl.querySelectorAll(".manual-pick").forEach(row => {
+        row.onclick = () => markPresentManually(s, row.dataset.uid);
+      });
+    };
+    input.oninput = render;
+    render();
+  }
+
+  async function markPresentManually(s, studentUid) {
+    const studentSnap = await getDoc(doc(db, "users", studentUid));
+    if (!studentSnap.exists()) return;
+    const student = studentSnap.data();
+
+    if (s.sessionDate && s.startTime && s.endTime) {
+      const graceMs = 15 * 60 * 1000;
+      const now = Date.now();
+      const startDt = new Date(`${s.sessionDate}T${s.startTime}:00`).getTime() - graceMs;
+      const endDt = new Date(`${s.sessionDate}T${s.endTime}:00`).getTime() + graceMs;
+      if (now < startDt || now > endDt) {
+        alert(`This session's window is ${s.startTime}–${s.endTime}. Outside that window, marking present is blocked.`);
+        return;
+      }
+    }
+
+    await setDoc(doc(db, "attendance_records", `${s.id}_${studentUid}`), {
+      sessionId: s.id,
+      studentUid,
+      studentName: student.name || student.email || "Unknown",
+      year: student.year,
+      department: student.department,
+      scannedByUid: myUid,
+      scannedByName: myProfile.name || auth.currentUser.email,
+      manualEntry: true,
+      scannedAt: serverTimestamp()
+    });
+  }
+
+  const QR_PREFIX = "URCAFF-STUDENT:";
+  const recentlyScanned = new Map(); // "sessionId:uid" -> timestamp, debounces repeat frames
+
+  async function handleScan(s, studentUid, codeBucket, resultEl) {
+    const key = `${s.id}:${studentUid}`;
+    const now = Date.now();
+    if (now - (recentlyScanned.get(key) || 0) < 4000) return;
+    recentlyScanned.set(key, now);
+
+    const currentBucket = Math.floor(now / 20000);
+    const bucketNum = parseInt(codeBucket, 10);
+    if (!bucketNum || Math.abs(currentBucket - bucketNum) > 1) {
+      resultEl.style.color = "#A83C2E";
+      resultEl.textContent = "That code has expired.  Ask the student to reopen their profile page.";
+      return;
+    }
+
+    if (s.sessionDate && s.startTime && s.endTime) {
+      const graceMs = 15 * 60 * 1000;
+      const startDt = new Date(`${s.sessionDate}T${s.startTime}:00`).getTime() - graceMs;
+      const endDt = new Date(`${s.sessionDate}T${s.endTime}:00`).getTime() + graceMs;
+      if (now < startDt) {
+        resultEl.style.color = "#A83C2E";
+        resultEl.textContent = `This session doesn't start until ${s.startTime}.`;
+        return;
+      }
+      if (now > endDt) {
+        resultEl.style.color = "#A83C2E";
+        resultEl.textContent = `This session's window closed at ${s.endTime}.`;
+        return;
+      }
+    }
+
+    try {
+      const studentSnap = await getDoc(doc(db, "users", studentUid));
+      if (!studentSnap.exists()) {
+        resultEl.style.color = "#A83C2E";
+        resultEl.textContent = "Unrecognized code,  not a known account.";
+        return;
+      }
+      const student = studentSnap.data();
+      const yearOk = s.year === "all" || student.year === s.year;
+      const deptOk = s.department === "all" || student.department === s.department;
+      if (!yearOk || !deptOk) {
+        resultEl.style.color = "#A83C2E";
+        resultEl.textContent = `${student.name || "That student"} isn't in ${s.year} · ${s.department === "all" ? "this year" : s.department}.`;
+        return;
+      }
+
+      await setDoc(doc(db, "attendance_records", `${s.id}_${studentUid}`), {
+        sessionId: s.id,
+        studentUid,
+        studentName: student.name || student.email || "Unknown",
+        year: student.year,
+        department: student.department,
+        scannedByUid: myUid,
+        scannedByName: myProfile.name || auth.currentUser.email,
+        scannedAt: serverTimestamp()
+      });
+
+      resultEl.style.color = "#17463C";
+      resultEl.textContent = `✓ ${student.name || "Student"} checked in.`;
+    } catch (err) {
+      resultEl.style.color = "#A83C2E";
+      resultEl.textContent = "Scan failed: " + err.message;
+    }
+  }
+
+  async function downloadCsv(s) {
+    const rosterSnap = await getDocs(query(collection(db, "users"), where("role", "==", "student")));
+    const roster = [];
+    rosterSnap.forEach((d) => {
+      const u = d.data();
+      const deptOk = s.department === "all" || u.department === s.department;
+      const yearOk = s.year === "all" || u.year === s.year;
+      if (yearOk && deptOk) roster.push({ uid: d.id, name: u.name || u.email });
+    });
+
+    const presentSnap = await getDocs(query(collection(db, "attendance_records"), where("sessionId", "==", s.id)));
+    const presentUids = new Set();
+    presentSnap.forEach((d) => presentUids.add(d.data().studentUid));
+
+    const rows = [
+      ["Subject", s.title],
+      ["Lecturer", s.lecturer || ""],
+      ["Date", s.sessionDate || ""],
+      ["Starts", s.startTime || ""],
+      ["Ends", s.endTime || ""],
+      ["Year", s.year === "all" ? "All years" : (s.year || "")],
+      ["Department", s.department === "all" ? "All departments" : (s.department || "")],
+      [],
+      ["Name", "Status"]
+    ];
+    roster.forEach((r) => rows.push([r.name, presentUids.has(r.uid) ? "Present" : "Absent"]));
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${s.title.replace(/[^a-z0-9]+/gi, "-")}-attendance.csv`;
+    a.click();
+  }
+
+  async function deleteSession(s) {
+    const recordsSnap = await getDocs(query(collection(db, "attendance_records"), where("sessionId", "==", s.id)));
+    const count = recordsSnap.size;
+    const sure = confirm(
+      `Delete "${s.title}" (${s.sessionDate || ""})?\n\n` +
+      `This permanently removes the session and all ${count} check-in record${count === 1 ? "" : "s"} for it. This can't be undone.`
+    );
+    if (!sure) return;
+    try {
+      await Promise.all(recordsSnap.docs.map((d) => deleteDoc(doc(db, "attendance_records", d.id))));
+      await deleteDoc(doc(db, "attendance_sessions", s.id));
+    } catch (err) {
+      alert("Couldn't delete: " + err.message);
+    }
+  }
+
+  document.getElementById("start-session-btn").addEventListener("click", async () => {
+    const title = document.getElementById("session-title").value.trim();
+    const lecturer = document.getElementById("session-lecturer").value.trim();
+    const sessionDate = document.getElementById("session-date").value;
+    const startTime = document.getElementById("session-start").value;
+    const endTime = document.getElementById("session-end").value;
+    if (!title) return;
+    if (!sessionDate || !startTime || !endTime) {
+      alert("Please set the date, start time, and end time for this session.");
+      return;
+    }
+    if (endTime <= startTime) {
+      alert("End time must be after the start time.");
+      return;
+    }
+    const year = isStaff ? document.getElementById("session-year").value : myProfile.year;
+    const department = isStaff ? document.getElementById("session-department").value : myProfile.department;
+
+    const btn = document.getElementById("start-session-btn");
+    btn.disabled = true; btn.textContent = "Starting…";
+    try {
+      await addDoc(collection(db, "attendance_sessions"), {
+        title, lecturer, year, department, sessionDate, startTime, endTime,
+        createdBy: myUid,
+        createdByName: myProfile.name || auth.currentUser.email,
+        createdAt: serverTimestamp()
+      });
+      await addDoc(collection(db, "notifications"), {
+        type: "attendance",
+        title: `Attendance started: ${title}`,
+        body: `${startTime}–${endTime} · show your check-in code to be marked present`,
+        link: "attendance.html",
+        year, department,
+        createdAt: serverTimestamp()
+      });
+      document.getElementById("session-title").value = "";
+      document.getElementById("session-lecturer").value = "";
+    } catch (err) {
+      alert("Couldn't start the session: " + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = "Start session";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    stopActiveScan();
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!--
+  ADD THIS TO profile.html — paste the <head> line into your <head>,
+  the HTML block wherever you want the QR to show (e.g. below the
+  student's name/details), and the script logic into your existing
+  onAuthStateChanged callback where you already have `user` and
+  `myProfile` (or profileSnap) available. Only shows for students —
+  CP/CPN and staff get one too since they're also scanned in.
+-->
+
+<!-- 1. In <head>, alongside your other CDN scripts: -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- 2. Where you want the code to appear on the page: -->
+<div class="composer" style="text-align:center; max-width:280px; margin:24px auto;">
+  <div class="ledger-rule" style="margin-bottom:10px;">Your check-in code</div>
+  <p style="font-size:12.5px; color:#5B6259; margin:0 0 14px;">Show this to your CP/CPN or a staff member to be marked present — don't share a screenshot of it.</p>
+  <div id="my-qr" style="display:flex; justify-content:center;"></div>
+</div>
+
+<!-- 3. In your script, once you have the signed-in user's uid: -->
+<script type="module">
+  // import QRCode is not a module — it's loaded globally by the CDN script above,
+  // so just call `new QRCode(...)` directly once `user.uid` is known.
+
+  // Inside your existing onAuthStateChanged(auth, async (user) => { ... }) block,
+  // after you've confirmed the user and loaded their profile, add:
+  //
+  //   new QRCode(document.getElementById("my-qr"), {
+  //     text: "URCAFF-STUDENT:" + user.uid,
+  //     width: 200,
+  //     height: 200,
+  //     colorDark: "#17463C",
+  //     colorLight: "#ffffff"
+  //   });
+  //
+  // That's it — the code just encodes the user's own uid with a fixed
+  // prefix so the scanner page can tell it apart from other QR codes.
+</script>

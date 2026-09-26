@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UR-CAFF UPDATE — Room status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17463C">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">&#9776;</button>
+    <div class="brand">
+      <img src="ur-logo.png" alt="University of Rwanda" class="brand-logo-img" onerror="this.replaceWith(Object.assign(document.createElement(&quot;div&quot;),{className:&quot;brand-mark&quot;,textContent:&quot;U&quot;}))">
+      <div class="brand-name">UR-CAFF UPDATE</div>
+    </div>
+  </div>
+  <nav class="nav-dropdown" id="nav-dropdown">
+    <a href="home.html">Home</a>
+    <a href="dashboard.html" class="active">Room status</a>
+    <a href="announcements.html">Announcements</a>
+    <a href="assignments.html">Assignments</a>
+    <a href="groups.html">Groups</a>
+    <a href="attendance.html">Attendance</a>
+    <a href="admin.html" id="admin-nav-link">Admin</a>
+  </nav>
+  <div class="topbar-icons">
+    <a href="notifications.html" id="notif-nav-link" class="icon-btn" title="Notifications">&#128276;<span class="notif-dot" id="notif-dot"></span></a>
+    <a href="profile.html" class="icon-btn" title="Profile" style="padding:0; overflow:hidden;">
+      <div class="user-avatar" id="user-initials" style="width:100%; height:100%; border-radius:50%;">&ndash;</div>
+    </a>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </div>
+  <span id="user-name" style="display:none;"></span>
+</div>
+
+<script>
+  document.getElementById("hamburger-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("nav-dropdown").classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    const dropdown = document.getElementById("nav-dropdown");
+    const btn = document.getElementById("hamburger-btn");
+    if (dropdown.classList.contains("open") && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.remove("open");
+    }
+  });
+</script>
+
+<main class="dash-main">
+  <div class="dash-header">
+    <div class="ledger-rule" id="term-label">Right now, on campus</div>
+    <h1>Room status</h1>
+    <p id="dash-sub">See which rooms are free before you walk over.</p>
+  </div>
+
+  <div id="manager-panel" style="display:none; margin-bottom: 20px;">
+    <form id="add-room-form" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+      <div class="field" style="flex:1; min-width:140px; margin-bottom:0;">
+        <label>Room name</label>
+        <input type="text" id="new-code" placeholder="e.g. Room 204" required>
+      </div>
+      <div class="field" style="flex:2; min-width:200px; margin-bottom:0;">
+        <label>Building / block</label>
+        <input type="text" id="new-building" placeholder="e.g. Main Block, Level 2" required>
+      </div>
+      <button type="submit" class="btn" style="width:auto; padding:11px 18px;">Add room</button>
+    </form>
+    <p id="add-room-error" style="font-size:12.5px; color:#A83C2E; margin:8px 0 0; display:none;"></p>
+  </div>
+
+  <div style="margin-bottom:20px;">
+    <input type="text" id="room-search" placeholder="Search rooms by name or building…"
+      style="width:100%; max-width:360px; padding:10px 13px; border:1.5px solid var(--field); border-radius:10px; font-family:var(--font-body); font-size:14px;">
+  </div>
+
+  <div class="loading-row" id="loading-row">
+    <div class="spinner"></div> Loading rooms…
+  </div>
+
+  <div class="course-grid" id="room-grid" style="display:none;"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <h3>No rooms added yet</h3>
+    <p id="empty-copy">Once a CP/CPN adds a room, it will show up here.</p>
+  </div>
+</main>
+
+<script type="module">
+  import { firebaseConfig } from "./firebase-config.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection, addDoc, updateDoc, deleteDoc, getDocs,
+    onSnapshot, orderBy, query, where, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const roomGrid = document.getElementById("room-grid");
+  const emptyState = document.getElementById("empty-state");
+  const loadingRow = document.getElementById("loading-row");
+  const managerPanel = document.getElementById("manager-panel");
+
+  let myProfile = null; // { name, role, year, department }
+  let canManage = false;
+  let isStaff = false;
+  let allRooms = [];
+  let currentUid = null;
+  let myClubs = []; // [{ id, name }] this user is appointed to represent
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+    if (!user.emailVerified) { window.location.href = "verify-email.html"; return; }
+
+    const nameToShow = user.displayName || user.email;
+    document.getElementById("user-name").textContent = nameToShow;
+    document.getElementById("user-initials").textContent =
+      nameToShow.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+
+    const profileSnap = await getDoc(doc(db, "users", user.uid));
+    myProfile = profileSnap.exists() ? profileSnap.data() : { role: "student" };
+    if (myProfile.role === "graduated") { window.location.href = "graduated.html"; return; }
+    canManage = myProfile.role === "cp_cpn" || myProfile.role === "staff";
+    isStaff = myProfile.role === "staff";
+    if (myProfile.role !== "staff") document.getElementById("admin-nav-link").style.display = "none";
+
+    (async () => {
+      try {
+        const lastSeen = parseInt(localStorage.getItem("notif_last_seen") || "0", 10);
+        const snap = await getDocs(collection(db, "notifications"));
+        let hasUnread = false;
+        snap.forEach((d) => {
+          const n = d.data();
+          const yearOk = n.year === "all" || n.year === myProfile.year;
+          const deptOk = !n.department || n.department === "all" || n.department === myProfile.department;
+          const ts = n.createdAt?.toMillis?.() || 0;
+          if ((myProfile.role === "staff" || (yearOk && deptOk && !n.staffOnly)) && ts > lastSeen) hasUnread = true;
+        });
+        if (hasUnread) document.getElementById("notif-dot").style.display = "block";
+      } catch (e) { /* non-critical */ }
+    })();
+
+    currentUid = user.uid;
+    try {
+      const clubsSnap = await getDocs(query(collection(db, "clubs"), where("appointedUid", "==", user.uid)));
+      myClubs = [];
+      clubsSnap.forEach(d => myClubs.push({ id: d.id, name: d.data().name }));
+    } catch (e) { /* non-critical */ }
+
+    if (isStaff) {
+      managerPanel.style.display = "block";
+      document.getElementById("dash-sub").textContent = "Add rooms and manage every room across all years and departments.";
+    } else if (canManage) {
+      document.getElementById("dash-sub").textContent =
+        `Marking rooms tags them with ${myProfile.year} · ${myProfile.department}. Ask staff to add a new room if you don't see it here.`;
+    }
+    if (myClubs.length > 0) {
+      const clubNames = myClubs.map(c => c.name).join(", ");
+      const existing = document.getElementById("dash-sub").textContent;
+      document.getElementById("dash-sub").textContent =
+        (canManage ? existing + " " : "") + `You can also book rooms on behalf of: ${clubNames}.`;
+    }
+
+    listenForRooms(user.uid);
+  });
+
+  function listenForRooms(myUid) {
+    const q = query(collection(db, "rooms"), orderBy("code"));
+    onSnapshot(q, (snap) => {
+      loadingRow.style.display = "none";
+      allRooms = [];
+      snap.forEach((docSnap) => allRooms.push({ id: docSnap.id, ...docSnap.data() }));
+      renderRoomList(allRooms, myUid);
+    }, (err) => {
+      loadingRow.style.display = "none";
+      emptyState.style.display = "block";
+      document.getElementById("empty-copy").textContent = "Couldn't load rooms: " + err.message;
+    });
+  }
+
+  function renderRoomList(rooms, myUid) {
+    if (rooms.length === 0) {
+      emptyState.style.display = "block";
+      roomGrid.style.display = "none";
+      return;
+    }
+    emptyState.style.display = "none";
+    roomGrid.style.display = "grid";
+    roomGrid.innerHTML = "";
+    rooms.forEach((r) => roomGrid.appendChild(renderRoomCard(r.id, r, myUid)));
+  }
+
+  function renderRoomCard(roomId, r, myUid) {
+    const isFree = r.status !== "occupied";
+    const card = document.createElement("div");
+    card.className = "course-card";
+
+    const occupantLine = !isFree && r.occupiedBy
+      ? (r.occupiedBy.type === "club"
+          ? `${escapeHtml(r.occupiedBy.clubName || "")}`
+          : r.occupiedBy.type === "staff"
+          ? `Staff (${escapeHtml(r.occupiedBy.name || "")})`
+          : `${escapeHtml(r.occupiedBy.year || "")} · ${escapeHtml(r.occupiedBy.department || "")}`)
+      : "";
+    const updatedText = r.updatedAt && r.updatedAt.toDate
+      ? `Updated ${r.updatedAt.toDate().toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+      : "";
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div class="course-code">${escapeHtml(r.building || "")}</div>
+        <span style="font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:0.06em;
+          padding:3px 9px; border-radius:20px; text-transform:uppercase;
+          background:${isFree ? '#DDEDE5' : '#F6DED8'}; color:${isFree ? '#17463C' : '#A83C2E'};">
+          ${isFree ? 'Free' : 'Occupied'}
+        </span>
+      </div>
+      <h3 class="course-name">${escapeHtml(r.code || "")}</h3>
+      <div class="course-meta">
+        <span>${occupantLine || (isFree ? "Open now" : "In use")}</span>
+      </div>
+      ${updatedText ? `<div style="font-family:var(--font-mono); font-size:10.5px; color:#8A8F86; margin-top:2px;">${escapeHtml(updatedText)}</div>` : ""}
+      <div class="room-actions" style="display:${(canManage || myClubs.length > 0) ? 'flex' : 'none'}; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;"></div>
+    `;
+
+    const canBookSomething = canManage || myClubs.length > 0;
+    if (canBookSomething) {
+      const actions = card.querySelector(".room-actions");
+      // Must actually be the CP/CPN (or staff, checked separately below) —
+      // a plain student who merely shares the same year+department (e.g.
+      // one who is also a club rep and so sees this panel at all) must not
+      // be able to free a room their class booked.
+      const isMyOwnClassOccupancy = canManage && !isFree && r.occupiedBy && r.occupiedBy.type === "class" &&
+        r.occupiedBy.year === myProfile.year && r.occupiedBy.department === myProfile.department;
+      const isMyClubOccupancy = !isFree && r.occupiedBy && r.occupiedBy.type === "club" &&
+        myClubs.some(c => c.id === r.occupiedBy.clubId);
+      const canToggleThis = isFree || isStaff || isMyOwnClassOccupancy || isMyClubOccupancy;
+
+      if (isFree && isStaff) {
+        // Staff aren't tied to a single class or club, and aren't limited
+        // to one room at a time — they can open as many rooms as needed.
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.style.cssText = "width:auto; padding:9px 14px; font-size:13px;";
+        btn.textContent = "Mark occupied";
+        btn.onclick = () => occupyRoom(roomId, { type: "staff", label: "Staff" }, r.code);
+        actions.appendChild(btn);
+      } else if (isFree && canBookSomething) {
+        const allOptions = [];
+        if (canManage) allOptions.push({ type: "class", label: `My class (${myProfile.year} · ${myProfile.department})` });
+        myClubs.forEach(c => allOptions.push({ type: "club", clubId: c.id, clubName: c.name, label: c.name }));
+
+        // An identity (a class, or a specific club/family) can only hold one
+        // occupied room at a time — find out if any option here is already
+        // holding a different room, and keep that room's code so we can tell
+        // the person which one to free first.
+        const heldElsewhere = new Map(); // option index -> room code they're already holding
+        allOptions.forEach((o, i) => {
+          const hit = findRoomHeldBy(o);
+          if (hit) heldElsewhere.set(i, hit.code);
+        });
+        const options = allOptions.filter((o, i) => !heldElsewhere.has(i));
+
+        if (options.length === 0) {
+          const codes = [...new Set(allOptions.map((o, i) => heldElsewhere.get(i)).filter(Boolean))];
+          const note = document.createElement("span");
+          note.style.cssText = "font-size:12px; color:#8A8F86; align-self:center;";
+          note.textContent = codes.length
+            ? `Free ${codes.join(", ")} before occupying another room.`
+            : "Free your current room before occupying another.";
+          actions.appendChild(note);
+        } else if (options.length === 1) {
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.style.cssText = "width:auto; padding:9px 14px; font-size:13px;";
+          btn.textContent = "Mark occupied";
+          btn.onclick = () => occupyRoom(roomId, options[0], r.code);
+          actions.appendChild(btn);
+        } else if (options.length > 1) {
+          const select = document.createElement("select");
+          select.style.cssText = "padding:8px 10px; border:1.5px solid var(--field); border-radius:8px; font-size:13px;";
+          select.innerHTML = options.map((o, i) => `<option value="${i}">${escapeHtml(o.label)}</option>`).join("");
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.style.cssText = "width:auto; padding:9px 14px; font-size:13px;";
+          btn.textContent = "Mark occupied";
+          btn.onclick = () => occupyRoom(roomId, options[parseInt(select.value, 10)], r.code);
+          actions.appendChild(select);
+          actions.appendChild(btn);
+        }
+      } else if (!isFree && canToggleThis) {
+        const btn = document.createElement("button");
+        btn.className = "btn btn-ghost";
+        btn.style.cssText = "width:auto; padding:9px 14px; font-size:13px;";
+        btn.textContent = "Mark free";
+        btn.onclick = () => freeRoom(roomId);
+        actions.appendChild(btn);
+      } else if (!isFree) {
+        const note = document.createElement("span");
+        note.style.cssText = "font-size:12px; color:#8A8F86; align-self:center;";
+        note.textContent = r.occupiedBy?.type === "club"
+          ? "Only that club's appointed person or staff can free this"
+          : "Only that class's CP/CPN or staff can free this";
+        actions.appendChild(note);
+      }
+    }
+
+    // Only staff can remove a room entirely CP/CPN and club reps can only
+    // toggle status, not delete rooms that turn out to be wrong or gone.
+    if (isStaff) {
+      const actions = card.querySelector(".room-actions");
+      actions.style.display = "flex";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "delete-link";
+      removeBtn.style.cssText = "margin-top:0; padding:9px 4px;";
+      removeBtn.textContent = "Remove";
+      removeBtn.onclick = async () => {
+        if (confirm(`Remove "${r.code}" (${r.building})? This can't be undone.`)) {
+          try {
+            await deleteDoc(doc(db, "rooms", roomId));
+          } catch (err) {
+            alert("Couldn't remove this room: " + err.message);
+          }
+        }
+      };
+      actions.appendChild(removeBtn);
+    }
+
+    return card;
+  }
+
+  // Does this class/club identity already hold a different occupied room?
+  // Returns that room (with its code) if so, otherwise null.
+  function findRoomHeldBy(option) {
+    if (option.type === "staff") return null; // staff are never limited to one room
+    return allRooms.find(rm => rm.status === "occupied" && rm.occupiedBy && (
+      option.type === "club"
+        ? rm.occupiedBy.type === "club" && rm.occupiedBy.clubId === option.clubId
+        : rm.occupiedBy.type === "class" &&
+          rm.occupiedBy.year === myProfile.year && rm.occupiedBy.department === myProfile.department
+    )) || null;
+  }
+
+  async function occupyRoom(roomId, option, roomCode) {
+    const alreadyHeld = findRoomHeldBy(option);
+    if (alreadyHeld) {
+      alert(`Free ${alreadyHeld.code} first — the same ${option.type === "club" ? option.clubName : "class"} can't occupy two rooms at once.`);
+      return;
+    }
+
+    const occupiedBy = option.type === "club"
+      ? { uid: auth.currentUser.uid, name: myProfile.name || auth.currentUser.email, type: "club", clubId: option.clubId, clubName: option.clubName }
+      : option.type === "staff"
+      ? { uid: auth.currentUser.uid, name: myProfile.name || auth.currentUser.email, type: "staff" }
+      : { uid: auth.currentUser.uid, name: myProfile.name || auth.currentUser.email, type: "class", year: myProfile.year || "", department: myProfile.department || "" };
+
+    await updateDoc(doc(db, "rooms", roomId), {
+      status: "occupied",
+      occupiedBy,
+      updatedAt: serverTimestamp()
+    });
+
+    // Only a class booking broadcasts to that class a club booking is still
+    // logged, but only staff sees it, since a club isn't a year/department.
+    await addDoc(collection(db, "notifications"), {
+      type: "room",
+      title: `${roomCode} is now occupied`,
+      body: option.type === "club"
+        ? `Booked by ${option.clubName} (${myProfile.name || auth.currentUser.email})`
+        : `Marked by ${myProfile.name || auth.currentUser.email}`,
+      link: "dashboard.html",
+      year: option.type === "club" ? "all" : (myProfile.year || "all"),
+      department: option.type === "club" ? "all" : (myProfile.department || "all"),
+      staffOnly: option.type === "club" || myProfile.role === "staff",
+      createdAt: serverTimestamp()
+    });
+  }
+
+  async function freeRoom(roomId) {
+    await updateDoc(doc(db, "rooms", roomId), {
+      status: "free",
+      occupiedBy: null,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  document.getElementById("room-search").addEventListener("input", (e) => {
+    const term = e.target.value.trim().toLowerCase();
+    const filtered = term
+      ? allRooms.filter(r => (r.code || "").toLowerCase().includes(term) || (r.building || "").toLowerCase().includes(term))
+      : allRooms;
+    renderRoomList(filtered, currentUid);
+  });
+
+  document.getElementById("add-room-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById("add-room-error");
+    errorEl.style.display = "none";
+    const code = document.getElementById("new-code").value.trim();
+    const building = document.getElementById("new-building").value.trim();
+    if (!code || !building) return;
+
+    // Never allow the same room to be added twice.
+    const alreadyExists = allRooms.some(r =>
+      (r.code || "").trim().toLowerCase() === code.toLowerCase() &&
+      (r.building || "").trim().toLowerCase() === building.toLowerCase()
+    );
+    if (alreadyExists) {
+      errorEl.textContent = `"${code}" in "${building}" already exists,  not adding a duplicate.`;
+      errorEl.style.display = "block";
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "rooms"), {
+        code, building, status: "free", occupiedBy: null, createdAt: serverTimestamp()
+      });
+      document.getElementById("new-code").value = "";
+      document.getElementById("new-building").value = "";
+    } catch (err) {
+      errorEl.textContent = "Couldn't add room: " + err.message;
+      errorEl.style.display = "block";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "index.html";
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+</script>
+
+</body>
+</html>
